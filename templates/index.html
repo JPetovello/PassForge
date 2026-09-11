@@ -528,10 +528,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="control-label">Calculated Entropy</label>
-                    <div class="metric-box" style="padding: 0.65rem; margin-top: 0.5rem;">
-                        <div class="metric-value" id="genEntropyVal" style="font-size: 1.05rem;">51.7 bits</div>
-                    </div>
+                    <label class="control-label" for="genEntropyVal">Calculated Entropy</label>
+                    <input id="genEntropyVal" type="text" value="51.7 bits" readonly>
                 </div>
             </div>
 
@@ -690,7 +688,7 @@
             const separator = document.getElementById('separatorSelect').value;
             const entropy = calculateGenerationEntropy(wordCount, wordlist, separator);
 
-            document.getElementById('genEntropyVal').innerText =
+            document.getElementById('genEntropyVal').value =
                 entropy === null ? 'Unavailable' : `${entropy.toFixed(1)} bits`;
         }
 
@@ -739,7 +737,7 @@
                 }
 
                 if (data.entropy_bits) {
-                    document.getElementById('genEntropyVal').innerText = `${data.entropy_bits} bits`;
+                    document.getElementById('genEntropyVal').value = `${data.entropy_bits} bits`;
                 }
 
             } catch (err) {
