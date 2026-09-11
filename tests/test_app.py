@@ -437,3 +437,34 @@ def test_large_generation_reports_fallback_when_active(client, monkeypatch):
 
     assert data["wordlist_type"] == "large"
     assert data["is_fallback"] is True
+
+
+def test_index_labels_normal_wordlists(client):
+    """Verify the normal wordlist labels reflect the actual loaded pool sizes."""
+    response = client.get('/')
+
+    assert response.status_code == 200
+
+    html = response.get_data(as_text=True)
+
+    assert f"EFF Large ({len(app_module.EFF_LARGE_WORDS):,})" in html
+
+    if app_module.EFF_SHORT_WORDS:
+        assert f"EFF Short ({len(app_module.EFF_SHORT_WORDS):,})" in html
+
+
+def test_index_labels_large_fallback_and_missing_short(client, monkeypatch):
+    """Verify fallback and unavailable wordlists are clearly identified in the UI."""
+    monkeypatch.setattr(app_module, 'USING_FALLBACK_WORDLIST', True)
+    monkeypatch.setattr(app_module, 'EFF_LARGE_WORDS', ['alpha', 'bravo', 'charlie'])
+    monkeypatch.setattr(app_module, 'EFF_SHORT_WORDS', [])
+
+    response = client.get('/')
+
+    assert response.status_code == 200
+
+    html = response.get_data(as_text=True)
+
+    assert "Emergency Fallback (3)" in html
+    assert "EFF Short (Unavailable)" in html
+    assert '<option value="short" disabled>' in html

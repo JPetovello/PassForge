@@ -476,8 +476,8 @@
                 <div>
                     <label class="control-label" for="wordlistSelect">Wordlist</label>
                     <select id="wordlistSelect">
-                        <option value="large" selected>EFF Large (7,776)</option>
-                        <option value="short">EFF Short (1,296)</option>
+                        <option value="large" selected>{% if is_fallback %}Emergency Fallback ({{ large_wordlist_size }}){% else %}EFF Large ({{ "{:,}".format(large_wordlist_size) }}){% endif %}</option>
+                        <option value="short"{% if short_wordlist_size == 0 %} disabled{% endif %}>{% if short_wordlist_size == 0 %}EFF Short (Unavailable){% else %}EFF Short ({{ "{:,}".format(short_wordlist_size) }}){% endif %}</option>
                     </select>
                 </div>
 
