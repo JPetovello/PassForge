@@ -1,3 +1,4 @@
+import math
 import pytest
 import app as app_module
 from app import app, limiter
@@ -372,3 +373,25 @@ def test_generate_rejects_invalid_separator(client):
 
     data = response.get_json()
     assert data["error"] == "Invalid separator"
+
+
+def test_generate_number_separator_includes_digit_entropy(client):
+    """Verify random digit separators contribute to reported generation entropy."""
+    plain = client.get('/api/generate?words=4&wordlist=large&separator=-')
+    numbered = client.get('/api/generate?words=4&wordlist=large&separator=number')
+
+    assert plain.status_code == 200
+    assert numbered.status_code == 200
+
+    plain_data = plain.get_json()
+    numbered_data = numbered.get_json()
+
+    # Four words have three separators. Each random digit contributes log2(10) bits.
+    expected_extra_bits = round(3 * math.log2(10), 1)
+
+    actual_extra_bits = round(
+        numbered_data["entropy_bits"] - plain_data["entropy_bits"],
+        1
+    )
+
+    assert actual_extra_bits == expected_extra_bits

@@ -298,7 +298,12 @@ def generate_passphrase():
     separator_mode = allowed_separators[raw_sep]
 
     bits_per_word = math.log2(len(word_pool))
-    theoretical_entropy = round(num_words * bits_per_word, 1)
+    theoretical_entropy = num_words * bits_per_word
+
+    if separator_mode == 'num':
+        theoretical_entropy += (num_words - 1) * math.log2(10)
+
+    theoretical_entropy = round(theoretical_entropy, 1)
 
     passphrases = []
     for _ in range(batch_count):
