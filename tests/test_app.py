@@ -478,3 +478,57 @@ def test_index_disables_generator_when_all_wordlists_missing(client, monkeypatch
     assert '<option value="short" disabled>EFF Short (Unavailable)</option>' in html
     assert 'id="generateBtn"' in html
     assert 'id="generateBtn" style="margin-top: 1rem; margin-bottom: 0;" disabled' in html
+
+def test_load_wordlist_accepts_verified_file(tmp_path, monkeypatch):
+    """A wordlist loads when its SHA-256 and entry count match."""
+    content = b"11111\talpha\n22222\tbravo\n"
+    wordlist = tmp_path / "test_wordlist.txt"
+    wordlist.write_bytes(content)
+
+    monkeypatch.setattr(app_module, "__file__", str(tmp_path / "app.py"))
+
+    expected_hash = app_module.hashlib.sha256(content).hexdigest()
+
+    words = app_module.load_wordlist(
+        "test_wordlist.txt",
+        expected_hash,
+        2,
+    )
+
+    assert words == ["alpha", "bravo"]
+
+
+def test_load_wordlist_rejects_bad_sha256(tmp_path, monkeypatch):
+    """A wordlist whose contents do not match the pinned hash must be rejected."""
+    content = b"11111\talpha\n22222\tbravo\n"
+    wordlist = tmp_path / "test_wordlist.txt"
+    wordlist.write_bytes(content)
+
+    monkeypatch.setattr(app_module, "__file__", str(tmp_path / "app.py"))
+
+    words = app_module.load_wordlist(
+        "test_wordlist.txt",
+        "0" * 64,
+        2,
+    )
+
+    assert words == []
+
+
+def test_load_wordlist_rejects_wrong_line_count(tmp_path, monkeypatch):
+    """A correctly hashed file with an unexpected entry count must be rejected."""
+    content = b"11111\talpha\n22222\tbravo\n"
+    wordlist = tmp_path / "test_wordlist.txt"
+    wordlist.write_bytes(content)
+
+    monkeypatch.setattr(app_module, "__file__", str(tmp_path / "app.py"))
+
+    expected_hash = app_module.hashlib.sha256(content).hexdigest()
+
+    words = app_module.load_wordlist(
+        "test_wordlist.txt",
+        expected_hash,
+        3,
+    )
+
+    assert words == []

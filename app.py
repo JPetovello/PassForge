@@ -61,35 +61,83 @@ if REDIS_URL.startswith("redis://"):
 # Grab application version from environment
 APP_VERSION = os.environ.get("APP_VERSION", "latest")
 
-# Load EFF Wordlists into memory at app startup with SHA-256 integrity verification
+# Load and verify bundled EFF wordlists at app startup
+EFF_LARGE_SHA256 = "addd35536511597a02fa0a9ff1e5284677b8883b83e986e43f15a3db996b903e"
+EFF_SHORT_SHA256 = "8f5ca830b8bffb6fe39c9736c024a00a6a6411adb3f83a9be8bfeeb6e067ae69"
+
+EFF_LARGE_LINES = 7776
+EFF_SHORT_LINES = 1296
+
 EFF_LARGE_WORDS = []
 EFF_SHORT_WORDS = []
 
-def load_wordlist(filename):
-    words = []
+def load_wordlist(filename, expected_sha256, expected_lines):
+    """Load a bundled wordlist only when its contents pass integrity checks."""
     filepath = os.path.join(os.path.dirname(__file__), filename)
-    if os.path.exists(filepath):
-        try:
-            sha256_hash = hashlib.sha256()
-            with open(filepath, 'rb') as f:
-                for byte_block in iter(lambda: f.read(4096), b""):
-                    sha256_hash.update(byte_block)
-            file_digest = sha256_hash.hexdigest()
-            print(f"[Wordlist Integrity] Loaded {filename} | SHA-256: {file_digest}")
 
-            with open(filepath, 'r', encoding='utf-8') as f:
-                for line in f:
-                    parts = line.strip().split(maxsplit=1)
-                    if len(parts) >= 2:
-                        words.append(parts[1])
-                    elif parts:
-                        words.append(parts[0])
-        except Exception as e:
-            print(f"[Wordlist Error] Failed to parse {filename}: {e}")
-    return words
+    if not os.path.exists(filepath):
+        print(f"[Wordlist Error] {filename} is missing.")
+        return []
 
-EFF_LARGE_WORDS = load_wordlist('eff_large_wordlist.txt')
-EFF_SHORT_WORDS = load_wordlist('eff_short_wordlist.txt')
+    try:
+        with open(filepath, 'rb') as f:
+            raw_data = f.read()
+
+        file_digest = hashlib.sha256(raw_data).hexdigest()
+
+        if file_digest != expected_sha256:
+            print(
+                f"[Wordlist Error] SHA-256 verification failed for {filename}. "
+                f"Expected {expected_sha256}, got {file_digest}."
+            )
+            return []
+
+        text = raw_data.decode('utf-8')
+        lines = text.splitlines()
+
+        if len(lines) != expected_lines:
+            print(
+                f"[Wordlist Error] Line-count verification failed for {filename}. "
+                f"Expected {expected_lines}, got {len(lines)}."
+            )
+            return []
+
+        words = []
+        for line in lines:
+            parts = line.strip().split(maxsplit=1)
+            if len(parts) >= 2:
+                words.append(parts[1])
+            elif parts:
+                words.append(parts[0])
+
+        if len(words) != expected_lines:
+            print(
+                f"[Wordlist Error] Parsed entry-count verification failed for {filename}. "
+                f"Expected {expected_lines}, got {len(words)}."
+            )
+            return []
+
+        print(
+            f"[Wordlist] Verified {filename} "
+            f"({expected_lines} entries, SHA-256: {file_digest})"
+        )
+        return words
+
+    except Exception as e:
+        print(f"[Wordlist Error] Failed to load {filename}: {e}")
+        return []
+
+EFF_LARGE_WORDS = load_wordlist(
+    'eff_large_wordlist.txt',
+    EFF_LARGE_SHA256,
+    EFF_LARGE_LINES,
+)
+
+EFF_SHORT_WORDS = load_wordlist(
+    'eff_short_wordlist.txt',
+    EFF_SHORT_SHA256,
+    EFF_SHORT_LINES,
+)
 
 if not EFF_LARGE_WORDS:
     print("[Wordlist Warning] EFF Large list not found. Large-list generation is unavailable until eff_large_wordlist.txt is installed.")
