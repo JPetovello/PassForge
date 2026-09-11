@@ -64,7 +64,6 @@ APP_VERSION = os.environ.get("APP_VERSION", "latest")
 # Load EFF Wordlists into memory at app startup with SHA-256 integrity verification
 EFF_LARGE_WORDS = []
 EFF_SHORT_WORDS = []
-USING_FALLBACK_WORDLIST = False
 
 def load_wordlist(filename):
     words = []
@@ -93,19 +92,7 @@ EFF_LARGE_WORDS = load_wordlist('eff_large_wordlist.txt')
 EFF_SHORT_WORDS = load_wordlist('eff_short_wordlist.txt')
 
 if not EFF_LARGE_WORDS:
-    USING_FALLBACK_WORDLIST = True
-    print("[Wordlist Warning] Full EFF Large list not found. Using expanded emergency fallback list.")
-    EFF_LARGE_WORDS = [
-        "correct", "horse", "battery", "staple", "dragon", "subway", "security",
-        "anchor", "bison", "cobalt", "canyon", "dolphin", "echo", "falcon",
-        "glacier", "harbor", "island", "jungle", "kettle", "lantern", "magnet",
-        "neutron", "oasis", "pinnacle", "quartz", "radar", "sierra", "timber",
-        "uranium", "vortex", "walrus", "xenon", "yellow", "zephyr", "avalanche",
-        "blizzard", "compass", "domino", "eclipse", "fossil", "granite", "horizon",
-        "igloo", "javelin", "kingdom", "leopard", "monsoon", "nebula", "octopus",
-        "pyramid", "quantum", "redwood", "saturn", "tsunami", "umbrella", "volcano",
-        "whisper", "zodiac", "alpine", "beacon", "cascade", "dune", "emerald"
-    ]
+    print("[Wordlist Warning] EFF Large list not found. Large-list generation is unavailable until eff_large_wordlist.txt is installed.")
 
 if not EFF_SHORT_WORDS:
     print("[Wordlist Warning] EFF Short list not found. Short-list generation is unavailable until eff_short_wordlist.txt is installed.")
@@ -180,7 +167,6 @@ def index():
     return render_template(
         'index.html',
         app_version=APP_VERSION,
-        is_fallback=USING_FALLBACK_WORDLIST,
         large_wordlist_size=len(EFF_LARGE_WORDS),
         short_wordlist_size=len(EFF_SHORT_WORDS),
     )
@@ -287,13 +273,13 @@ def generate_passphrase():
     if list_type not in {'large', 'short'}:
         return jsonify({'error': 'Invalid wordlist type'}), 400
 
-    word_pool = EFF_SHORT_WORDS if list_type == 'short' else EFF_LARGE_WORDS
+    if list_type == 'large' and not EFF_LARGE_WORDS:
+        return jsonify({'error': 'EFF Large wordlist is not installed'}), 503
 
     if list_type == 'short' and not EFF_SHORT_WORDS:
         return jsonify({'error': 'EFF Short wordlist is not installed'}), 503
 
-    if not word_pool:
-        return jsonify({'error': 'Wordlist empty'}), 500
+    word_pool = EFF_SHORT_WORDS if list_type == 'short' else EFF_LARGE_WORDS
 
     raw_sep = request.args.get('separator', '-')
     allowed_separators = {'-': '-', '_': '_', '.': '.', 'space': ' ', 'number': 'num'}
@@ -326,8 +312,7 @@ def generate_passphrase():
         'count': batch_count,
         'words': num_words,
         'entropy_bits': theoretical_entropy,
-        'wordlist_type': list_type,
-        'is_fallback': list_type == 'large' and USING_FALLBACK_WORDLIST
+        'wordlist_type': list_type
     })
 
 @app.errorhandler(400)

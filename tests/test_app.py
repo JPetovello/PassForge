@@ -409,38 +409,33 @@ def test_index_exposes_actual_wordlist_sizes(client):
     assert f"short: {len(app_module.EFF_SHORT_WORDS)}" in html
 
 
-def test_short_generation_does_not_report_large_fallback(client, monkeypatch):
-    """Verify large-list fallback state is not reported for short-list generation."""
-    monkeypatch.setattr(app_module, 'USING_FALLBACK_WORDLIST', True)
-    monkeypatch.setattr(app_module, 'EFF_SHORT_WORDS', ['alpha', 'bravo', 'charlie'])
 
-    response = client.get('/api/generate?words=3&wordlist=short')
-
-    assert response.status_code == 200
-
-    data = response.get_json()
-
-    assert data["wordlist_type"] == "short"
-    assert data["is_fallback"] is False
-
-
-def test_large_generation_reports_fallback_when_active(client, monkeypatch):
-    """Verify large-list generation reports fallback when the emergency pool is active."""
-    monkeypatch.setattr(app_module, 'USING_FALLBACK_WORDLIST', True)
-    monkeypatch.setattr(app_module, 'EFF_LARGE_WORDS', ['alpha', 'bravo', 'charlie'])
+def test_generate_large_wordlist_unavailable(client, monkeypatch):
+    """Missing EFF Large list must disable large-list generation."""
+    monkeypatch.setattr(app_module, 'EFF_LARGE_WORDS', [])
 
     response = client.get('/api/generate?words=3&wordlist=large')
 
-    assert response.status_code == 200
+    assert response.status_code == 503
+    assert response.get_json() == {
+        "error": "EFF Large wordlist is not installed"
+    }
 
-    data = response.get_json()
 
-    assert data["wordlist_type"] == "large"
-    assert data["is_fallback"] is True
+def test_generate_short_wordlist_unavailable(client, monkeypatch):
+    """Missing EFF Short list must disable short-list generation."""
+    monkeypatch.setattr(app_module, 'EFF_SHORT_WORDS', [])
+
+    response = client.get('/api/generate?words=3&wordlist=short')
+
+    assert response.status_code == 503
+    assert response.get_json() == {
+        "error": "EFF Short wordlist is not installed"
+    }
 
 
 def test_index_labels_normal_wordlists(client):
-    """Verify the normal wordlist labels reflect the actual loaded pool sizes."""
+    """Verify normal wordlist labels reflect the actual loaded pool sizes."""
     response = client.get('/')
 
     assert response.status_code == 200
@@ -453,10 +448,24 @@ def test_index_labels_normal_wordlists(client):
         assert f"EFF Short ({len(app_module.EFF_SHORT_WORDS):,})" in html
 
 
-def test_index_labels_large_fallback_and_missing_short(client, monkeypatch):
-    """Verify fallback and unavailable wordlists are clearly identified in the UI."""
-    monkeypatch.setattr(app_module, 'USING_FALLBACK_WORDLIST', True)
-    monkeypatch.setattr(app_module, 'EFF_LARGE_WORDS', ['alpha', 'bravo', 'charlie'])
+def test_index_selects_short_when_large_missing(client, monkeypatch):
+    """Short list becomes selected when Large is unavailable."""
+    monkeypatch.setattr(app_module, 'EFF_LARGE_WORDS', [])
+    monkeypatch.setattr(app_module, 'EFF_SHORT_WORDS', ['alpha', 'bravo', 'charlie'])
+
+    response = client.get('/')
+
+    assert response.status_code == 200
+
+    html = response.get_data(as_text=True)
+
+    assert '<option value="large" disabled>EFF Large (Unavailable)</option>' in html
+    assert '<option value="short" selected>EFF Short (3)</option>' in html
+
+
+def test_index_disables_generator_when_all_wordlists_missing(client, monkeypatch):
+    """No generation is offered when neither EFF list is available."""
+    monkeypatch.setattr(app_module, 'EFF_LARGE_WORDS', [])
     monkeypatch.setattr(app_module, 'EFF_SHORT_WORDS', [])
 
     response = client.get('/')
@@ -465,6 +474,7 @@ def test_index_labels_large_fallback_and_missing_short(client, monkeypatch):
 
     html = response.get_data(as_text=True)
 
-    assert "Emergency Fallback (3)" in html
-    assert "EFF Short (Unavailable)" in html
-    assert '<option value="short" disabled>' in html
+    assert '<option value="large" disabled>EFF Large (Unavailable)</option>' in html
+    assert '<option value="short" disabled>EFF Short (Unavailable)</option>' in html
+    assert 'id="generateBtn"' in html
+    assert 'id="generateBtn" style="margin-top: 1rem; margin-bottom: 0;" disabled' in html

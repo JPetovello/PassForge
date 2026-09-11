@@ -476,8 +476,8 @@
                 <div>
                     <label class="control-label" for="wordlistSelect">Wordlist</label>
                     <select id="wordlistSelect">
-                        <option value="large" selected>{% if is_fallback %}Emergency Fallback ({{ large_wordlist_size }}){% else %}EFF Large ({{ "{:,}".format(large_wordlist_size) }}){% endif %}</option>
-                        <option value="short"{% if short_wordlist_size == 0 %} disabled{% endif %}>{% if short_wordlist_size == 0 %}EFF Short (Unavailable){% else %}EFF Short ({{ "{:,}".format(short_wordlist_size) }}){% endif %}</option>
+                        <option value="large"{% if large_wordlist_size > 0 %} selected{% else %} disabled{% endif %}>{% if large_wordlist_size == 0 %}EFF Large (Unavailable){% else %}EFF Large ({{ "{:,}".format(large_wordlist_size) }}){% endif %}</option>
+                        <option value="short"{% if short_wordlist_size == 0 %} disabled{% elif large_wordlist_size == 0 %} selected{% endif %}>{% if short_wordlist_size == 0 %}EFF Short (Unavailable){% else %}EFF Short ({{ "{:,}".format(short_wordlist_size) }}){% endif %}</option>
                     </select>
                 </div>
 
@@ -535,7 +535,7 @@
                 </div>
             </div>
 
-            <button type="button" id="generateBtn" style="margin-top: 1rem; margin-bottom: 0;">Generate Passphrase</button>
+            <button type="button" id="generateBtn" style="margin-top: 1rem; margin-bottom: 0;"{% if large_wordlist_size == 0 and short_wordlist_size == 0 %} disabled{% endif %}>Generate Passphrase</button>
         </div>
     </main>
 
@@ -595,6 +595,11 @@
 
         function calculateGenerationEntropy(wordCount, wordlist, separator) {
             const poolSize = wordlistSizes[wordlist];
+
+            if (!poolSize || poolSize <= 0) {
+                return null;
+            }
+
             const bitsPerWord = Math.log2(poolSize);
             let totalBits = wordCount * bitsPerWord;
 
@@ -615,7 +620,9 @@
                 let requiredWords = 10;
 
                 for (let words = 3; words <= 10; words++) {
-                    if (calculateGenerationEntropy(words, wordlist, separator) >= targetBits) {
+                    const entropy = calculateGenerationEntropy(words, wordlist, separator);
+
+                    if (entropy !== null && entropy >= targetBits) {
                         requiredWords = words;
                         break;
                     }
@@ -643,8 +650,10 @@
             const wordCount = parseInt(document.getElementById('wordCountSelect').value);
             const wordlist = document.getElementById('wordlistSelect').value;
             const separator = document.getElementById('separatorSelect').value;
-            const totalBits = calculateGenerationEntropy(wordCount, wordlist, separator).toFixed(1);
-            document.getElementById('genEntropyVal').innerText = `${totalBits} bits`;
+            const entropy = calculateGenerationEntropy(wordCount, wordlist, separator);
+
+            document.getElementById('genEntropyVal').innerText =
+                entropy === null ? 'Unavailable' : `${entropy.toFixed(1)} bits`;
         }
 
         // Passphrase Generator Logic
