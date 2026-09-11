@@ -588,8 +588,14 @@
             rateLimitBanner.textContent = '';
         }
 
+        const wordlistSizes = {
+            large: {{ large_wordlist_size | tojson }},
+            short: {{ short_wordlist_size | tojson }}
+        };
+
         function calculateGenerationEntropy(wordCount, wordlist, separator) {
-            const bitsPerWord = (wordlist === 'short') ? 10.32 : 12.92;
+            const poolSize = wordlistSizes[wordlist];
+            const bitsPerWord = Math.log2(poolSize);
             let totalBits = wordCount * bitsPerWord;
 
             if (separator === 'number') {

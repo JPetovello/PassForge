@@ -395,3 +395,15 @@ def test_generate_number_separator_includes_digit_entropy(client):
     )
 
     assert actual_extra_bits == expected_extra_bits
+
+
+def test_index_exposes_actual_wordlist_sizes(client):
+    """Verify frontend entropy calculations receive the actual loaded wordlist sizes."""
+    response = client.get('/')
+
+    assert response.status_code == 200
+
+    html = response.get_data(as_text=True)
+
+    assert f"large: {len(app_module.EFF_LARGE_WORDS)}" in html
+    assert f"short: {len(app_module.EFF_SHORT_WORDS)}" in html

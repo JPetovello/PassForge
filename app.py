@@ -177,7 +177,13 @@ def calculate_entropy(password):
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html', app_version=APP_VERSION, is_fallback=USING_FALLBACK_WORDLIST)
+    return render_template(
+        'index.html',
+        app_version=APP_VERSION,
+        is_fallback=USING_FALLBACK_WORDLIST,
+        large_wordlist_size=len(EFF_LARGE_WORDS),
+        short_wordlist_size=len(EFF_SHORT_WORDS),
+    )
 
 @app.route('/favicon.ico')
 def favicon():
