@@ -219,7 +219,9 @@ def evaluate_password():
     
     sha1_prefix = sanitize_input(data.get('sha1_prefix', '')).upper()
     sha1_suffix = sanitize_input(data.get('sha1_suffix', '')).upper()
-    password = sanitize_input(data.get('password', ''))
+
+    raw_password = data.get('password', '')
+    password = raw_password if isinstance(raw_password, str) else ''
 
     if not password and not (sha1_prefix and sha1_suffix):
         return jsonify({'error': 'No evaluation data provided'}), 400

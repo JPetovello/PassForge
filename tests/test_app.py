@@ -152,3 +152,36 @@ def test_generate_passphrase_bounds_clamping(client):
     data = response.get_json()
     assert data["words"] == 3
     assert data["count"] == 10
+
+
+def test_evaluate_preserves_password_exactly(client, monkeypatch):
+    """Verify password evaluation does not alter the user's password."""
+    original_password = "  Correct Horse Battery Staple  "
+
+    seen = {
+        "zxcvbn": None,
+        "hibp": None,
+    }
+
+    def fake_zxcvbn(password):
+        seen["zxcvbn"] = password
+        return {
+            "score": 4,
+            "feedback": {},
+            "crack_times_display": {}
+        }
+
+    def fake_check_hibp(password):
+        seen["hibp"] = password
+        return 0
+
+    monkeypatch.setattr(app_module.zxcvbn, "zxcvbn", fake_zxcvbn)
+    monkeypatch.setattr(app_module, "check_hibp", fake_check_hibp)
+
+    response = client.post('/api/evaluate', json={
+        "password": original_password
+    })
+
+    assert response.status_code == 200
+    assert seen["zxcvbn"] == original_password
+    assert seen["hibp"] == original_password
