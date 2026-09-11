@@ -133,7 +133,7 @@ def apply_security_headers(response):
 
 def check_hibp_by_prefix(prefix, suffix):
     """Check HIBP via k-Anonymity using pre-computed prefix and suffix with strict format validation."""
-    if not re.fullmatch(r'^[0-9A-F]{5}$', prefix) or not re.fullmatch(r'^[0-9A-F]{35,40}$', suffix):
+    if not re.fullmatch(r'^[0-9A-F]{5}$', prefix) or not re.fullmatch(r'^[0-9A-F]{35}$', suffix):
         return 0
 
     url = f"https://api.pwnedpasswords.com/range/{prefix}"
@@ -225,6 +225,13 @@ def evaluate_password():
 
     if not password and not (sha1_prefix and sha1_suffix):
         return jsonify({'error': 'No evaluation data provided'}), 400
+
+    if not password:
+        if (
+            not re.fullmatch(r'^[0-9A-F]{5}$', sha1_prefix)
+            or not re.fullmatch(r'^[0-9A-F]{35}$', sha1_suffix)
+        ):
+            return jsonify({'error': 'Invalid SHA-1 prefix or suffix format'}), 400
 
     if password:
         if len(password) > 256:

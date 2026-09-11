@@ -185,3 +185,22 @@ def test_evaluate_preserves_password_exactly(client, monkeypatch):
     assert response.status_code == 200
     assert seen["zxcvbn"] == original_password
     assert seen["hibp"] == original_password
+
+
+def test_hibp_rejects_invalid_sha1_suffix_length(client, monkeypatch):
+    """Verify zero-knowledge HIBP mode rejects SHA-1 suffixes that are not exactly 35 hex characters."""
+    called = {"requests_get": False}
+
+    def fake_get(*args, **kwargs):
+        called["requests_get"] = True
+        raise AssertionError("HIBP should not be called for an invalid suffix")
+
+    monkeypatch.setattr(app_module.requests, "get", fake_get)
+
+    response = client.post('/api/evaluate', json={
+        "sha1_prefix": "ABCDE",
+        "sha1_suffix": "F" * 40
+    })
+
+    assert response.status_code == 400
+    assert called["requests_get"] is False
