@@ -291,7 +291,11 @@ def generate_passphrase():
 
     raw_sep = request.args.get('separator', '-')
     allowed_separators = {'-': '-', '_': '_', '.': '.', 'space': ' ', 'number': 'num'}
-    separator_mode = allowed_separators.get(raw_sep, '-')
+
+    if raw_sep not in allowed_separators:
+        return jsonify({'error': 'Invalid separator'}), 400
+
+    separator_mode = allowed_separators[raw_sep]
 
     bits_per_word = math.log2(len(word_pool))
     theoretical_entropy = round(num_words * bits_per_word, 1)

@@ -362,3 +362,13 @@ def test_generate_rejects_invalid_wordlist_type(client):
 
     data = response.get_json()
     assert data["error"] == "Invalid wordlist type"
+
+
+def test_generate_rejects_invalid_separator(client):
+    """Verify unsupported separators are rejected instead of silently using a hyphen."""
+    response = client.get('/api/generate?separator=banana')
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+    assert data["error"] == "Invalid separator"
