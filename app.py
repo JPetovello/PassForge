@@ -137,7 +137,7 @@ def check_hibp_by_prefix(prefix, suffix):
         return 0
 
     url = f"https://api.pwnedpasswords.com/range/{prefix}"
-    headers = {'User-Agent': 'PasswordCheckerWeb-Homelab-App'}
+    headers = {'User-Agent': 'PassForge-Homelab-App'}
     
     try:
         res = requests.get(url, headers=headers, timeout=5)

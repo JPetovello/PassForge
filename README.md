@@ -1,4 +1,4 @@
-# Password Checker Web
+# PassForge
 
 A lightweight, secure web application for evaluating password strength, calculating entropy, checking against known data breaches via the Have I Been Pwned API, and generating secure passphrases. Built with Flask, Python, and Tailwind CSS, featuring local k-Anonymity privacy protection.
 
@@ -16,7 +16,7 @@ A lightweight, secure web application for evaluating password strength, calculat
 
 ### Unraid (Community Applications)
 
-Search for Password Checker Web in the Unraid Community Applications tab and install it directly using the official template.
+Search for PassForge in the Unraid Community Applications tab and install it directly using the official template.
 
 ## Environment Variables
 

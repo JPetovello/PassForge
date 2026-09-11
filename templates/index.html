@@ -13,7 +13,7 @@
     
     <script>
         (function() {
-            const savedTheme = localStorage.getItem('pcw-theme');
+            const savedTheme = localStorage.getItem('passforge-theme');
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const theme = savedTheme || (systemDark ? 'dark' : 'light');
             if (theme === 'dark') {
@@ -540,7 +540,7 @@
     </main>
 
     <footer style="text-align: center; margin-top: 2rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
-        <p style="margin: 0; font-weight: 600;">PasswordCheckerWeb {{ app_version }}</p>
+        <p style="margin: 0; font-weight: 600;">PassForge {{ app_version }}</p>
         <p style="margin: 0.25rem 0 0 0; font-size: 0.80rem;">Built with AI collaboration &amp; checked with local AI auditing</p>
     </footer>
 
@@ -574,7 +574,7 @@
 
         toggleBtn.addEventListener('click', () => {
             const isDarkNow = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('pcw-theme', isDarkNow ? 'dark' : 'light');
+            localStorage.setItem('passforge-theme', isDarkNow ? 'dark' : 'light');
             updateThemeUI(isDarkNow);
         });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'passchecker-v1';
+const CACHE_NAME = 'passforge-v1';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

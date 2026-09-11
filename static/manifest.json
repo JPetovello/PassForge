@@ -1,6 +1,6 @@
 {
-  "name": "Password Checker & Generator",
-  "short_name": "PassChecker",
+  "name": "PassForge",
+  "short_name": "PassForge",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
