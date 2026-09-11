@@ -58,9 +58,6 @@ if REDIS_URL.startswith("redis://"):
     except Exception as e:
         print(f"[Redis Warning] Could not connect to Redis ({REDIS_URL}): {e}")
 
-# Grab application version from environment
-APP_VERSION = os.environ.get("APP_VERSION", "latest")
-
 # Load and verify bundled EFF wordlists at app startup
 EFF_LARGE_SHA256 = "addd35536511597a02fa0a9ff1e5284677b8883b83e986e43f15a3db996b903e"
 EFF_SHORT_SHA256 = "8f5ca830b8bffb6fe39c9736c024a00a6a6411adb3f83a9be8bfeeb6e067ae69"
@@ -214,7 +211,6 @@ def calculate_entropy(password):
 def index():
     return render_template(
         'index.html',
-        app_version=APP_VERSION,
         large_wordlist_size=len(EFF_LARGE_WORDS),
         short_wordlist_size=len(EFF_SHORT_WORDS),
     )

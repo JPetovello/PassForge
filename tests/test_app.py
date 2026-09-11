@@ -554,3 +554,16 @@ def test_entropy_target_labels_are_dynamic(client):
     assert 'function requiredWordsForEntropy' in html
     assert 'function updateEntropyTargetLabels' in html
 
+def test_footer_matches_passforge_branding(client):
+    """Footer uses the PassForge copyright/license line without legacy version or AI text."""
+    response = client.get('/')
+
+    assert response.status_code == 200
+
+    html = response.get_data(as_text=True)
+
+    assert 'PassForge · © 2026 Jeff Petovello · Licensed under AGPLv3' in html
+    assert 'Built with AI collaboration' not in html
+    assert 'checked with local AI auditing' not in html
+    assert 'PassForge latest' not in html
+
