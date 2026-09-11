@@ -407,3 +407,33 @@ def test_index_exposes_actual_wordlist_sizes(client):
 
     assert f"large: {len(app_module.EFF_LARGE_WORDS)}" in html
     assert f"short: {len(app_module.EFF_SHORT_WORDS)}" in html
+
+
+def test_short_generation_does_not_report_large_fallback(client, monkeypatch):
+    """Verify large-list fallback state is not reported for short-list generation."""
+    monkeypatch.setattr(app_module, 'USING_FALLBACK_WORDLIST', True)
+    monkeypatch.setattr(app_module, 'EFF_SHORT_WORDS', ['alpha', 'bravo', 'charlie'])
+
+    response = client.get('/api/generate?words=3&wordlist=short')
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["wordlist_type"] == "short"
+    assert data["is_fallback"] is False
+
+
+def test_large_generation_reports_fallback_when_active(client, monkeypatch):
+    """Verify large-list generation reports fallback when the emergency pool is active."""
+    monkeypatch.setattr(app_module, 'USING_FALLBACK_WORDLIST', True)
+    monkeypatch.setattr(app_module, 'EFF_LARGE_WORDS', ['alpha', 'bravo', 'charlie'])
+
+    response = client.get('/api/generate?words=3&wordlist=large')
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["wordlist_type"] == "large"
+    assert data["is_fallback"] is True

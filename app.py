@@ -327,7 +327,7 @@ def generate_passphrase():
         'words': num_words,
         'entropy_bits': theoretical_entropy,
         'wordlist_type': list_type,
-        'is_fallback': USING_FALLBACK_WORDLIST
+        'is_fallback': list_type == 'large' and USING_FALLBACK_WORDLIST
     })
 
 @app.errorhandler(400)
