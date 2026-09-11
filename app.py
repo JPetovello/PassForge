@@ -277,6 +277,10 @@ def generate_passphrase():
     batch_count = max(1, min(batch_count, 10))
 
     list_type = request.args.get('wordlist', 'large').lower()
+
+    if list_type not in {'large', 'short'}:
+        return jsonify({'error': 'Invalid wordlist type'}), 400
+
     word_pool = EFF_SHORT_WORDS if list_type == 'short' else EFF_LARGE_WORDS
 
     if list_type == 'short' and not EFF_SHORT_WORDS:

@@ -352,3 +352,13 @@ def test_hibp_request_exception_is_unavailable(client, monkeypatch):
     assert data["hibp"]["available"] is False
     assert data["hibp"]["found"] is False
     assert data["hibp"]["count"] is None
+
+
+def test_generate_rejects_invalid_wordlist_type(client):
+    """Verify unsupported wordlist names are rejected instead of silently using the large list."""
+    response = client.get('/api/generate?wordlist=banana')
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+    assert data["error"] == "Invalid wordlist type"
