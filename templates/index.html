@@ -92,6 +92,12 @@
             box-sizing: border-box;
         }
 
+        .page-container {
+            width: 100%;
+            max-width: 880px;
+            box-sizing: border-box;
+        }
+
         main { 
             background: var(--bg-main); 
             padding: 2.5rem; 
@@ -351,6 +357,7 @@
     </style>
 </head>
 <body>
+    <div class="page-container">
     <main>
         <div class="header-row">
             <h1>Password &amp; Passphrase Analyzer</h1>
@@ -535,11 +542,13 @@
 
             <button type="button" id="generateBtn" style="margin-top: 1rem; margin-bottom: 0;"{% if large_wordlist_size == 0 and short_wordlist_size == 0 %} disabled{% endif %}>Generate Passphrase</button>
         </div>
+
     </main>
 
-    <footer style="margin-top: 2rem; font-size: 0.80rem; color: var(--text-muted);">
+    <footer style="padding: 22px 3px 0; font-size: 11px; color: var(--text-muted); text-align: left;">
         PassForge · © 2026 Jeff Petovello · Licensed under AGPLv3
     </footer>
+    </div>
 
     <!-- Service Worker Registration -->
     <script>
