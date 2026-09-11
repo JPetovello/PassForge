@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password &amp; Passphrase Analyzer</title>
+    
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('pcw-theme');
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (systemDark ? 'dark' : 'light');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+
+    <style>
+        /* Light Mode */
+        :root {
+            --bg-body: #f1f5f9;
+            --bg-main: #ffffff;
+            --bg-card: #f8fafc;
+            --bg-box: #ffffff;
+            --border-color: #94a3b8;
+            --text-primary: #0f172a;
+            --text-heading: #0f172a;
+            --text-muted: #334155;
+            --input-bg: #ffffff;
+            --btn-primary: #0284c7;
+            --btn-text: #ffffff;
+            --meter-0: #dc2626;
+            --meter-1: #c2410c;
+            --meter-2: #b45309;
+            --meter-3: #0369a1;
+            --meter-4: #15803d;
+            --meter-bg: #cbd5e1;
+            --color-danger: #dc2626;
+            --color-success: #15803d;
+            --alert-bg: #fef2f2;
+            --alert-border: #fca5a5;
+            --alert-text: #991b1b;
+        }
+
+        /* Dark Mode */
+        html.dark {
+            --bg-body: #0b0f19;
+            --bg-main: #111827;
+            --bg-card: #1f2937;
+            --bg-box: #111827;
+            --border-color: #4b5563;
+            --text-primary: #ffffff;
+            --text-heading: #38bdf8;
+            --text-muted: #cbd5e1;
+            --input-bg: #030712;
+            --btn-primary: #0284c7;
+            --btn-text: #ffffff;
+            --meter-0: #f87171;
+            --meter-1: #fb923c;
+            --meter-2: #fbbf24;
+            --meter-3: #38bdf8;
+            --meter-4: #4ade80;
+            --meter-bg: #374151;
+            --color-danger: #f87171;
+            --color-success: #4ade80;
+            --alert-bg: #450a0a;
+            --alert-border: #991b1b;
+            --alert-text: #fca5a5;
+        }
+
+        body { 
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 1.5rem 1rem;
+            background-color: var(--bg-body); 
+            color: var(--text-primary); 
+            transition: background-color 0.2s ease, color 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        main { 
+            background: var(--bg-main); 
+            padding: 2.5rem; 
+            border-radius: 0.75rem; 
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.3); 
+            width: 100%; 
+            max-width: 880px; 
+            box-sizing: border-box; 
+            border: 1px solid var(--border-color);
+            transition: background 0.2s ease;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header-row h1 {
+            margin: 0;
+            font-size: 1.75rem;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle-btn {
+            background: var(--input-bg);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            width: auto;
+            margin: 0;
+        }
+
+        .theme-toggle-btn:hover {
+            background: var(--bg-card);
+        }
+
+        .alert-banner {
+            display: none;
+            background-color: var(--alert-bg);
+            border: 1px solid var(--alert-border);
+            color: var(--alert-text);
+            padding: 0.85rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .card { 
+            background: var(--bg-card); 
+            border: 1px solid var(--border-color); 
+            padding: 1.75rem; 
+            border-radius: 0.5rem; 
+            margin-bottom: 1.5rem; 
+        }
+
+        .card h2 { 
+            margin-top: 0; 
+            font-size: 1.25rem; 
+            margin-bottom: 1rem; 
+            color: var(--text-heading); 
+        }
+
+        input, select { 
+            width: 100%; 
+            padding: 0.85rem; 
+            margin-top: 0.5rem; 
+            margin-bottom: 1rem; 
+            border-radius: 0.375rem; 
+            border: 2px solid var(--border-color); 
+            background: var(--input-bg); 
+            color: var(--text-primary); 
+            font-size: 1.05rem; 
+            font-weight: 500;
+            box-sizing: border-box; 
+            text-align: center; 
+        }
+
+        input:focus, select:focus { 
+            outline: 3px solid #38bdf8; 
+            outline-offset: 1px;
+        }
+
+        button { 
+            width: 100%;
+            padding: 0.85rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            border-radius: 0.375rem;
+            background: var(--btn-primary); 
+            color: var(--btn-text); 
+            border: none; 
+            cursor: pointer; 
+            font-size: 1rem;
+            font-weight: 700; 
+            transition: filter 0.2s; 
+        }
+
+        button:hover { 
+            filter: brightness(1.15); 
+        }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 1rem; 
+            margin-top: 1rem; 
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            main { padding: 1.5rem; }
+            .grid, .grid-2, .grid-4 { grid-template-columns: 1fr; }
+            .generator-row { flex-direction: column; }
+            .generator-row button { width: 100% !important; }
+        }
+
+        .metric-box { 
+            background: var(--bg-box); 
+            padding: 1rem; 
+            border-radius: 0.375rem; 
+            text-align: center; 
+            border: 1px solid var(--border-color); 
+        }
+
+        .metric-title { 
+            font-size: 0.8rem; 
+            font-weight: 700;
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            margin-bottom: 0.35rem; 
+        }
+
+        .metric-value { 
+            font-size: 1.2rem; 
+            font-weight: 800; 
+            color: var(--text-primary); 
+        }
+
+        .meter-container {
+            width: 100%;
+            height: 8px;
+            background-color: var(--meter-bg);
+            border-radius: 4px;
+            margin-top: 0.6rem;
+            overflow: hidden;
+            display: block;
+        }
+
+        .meter-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .generator-row { 
+            display: flex; 
+            gap: 0.75rem; 
+            align-items: center; 
+        }
+
+        .generator-row input { margin-bottom: 0; }
+
+        .generator-row button { 
+            width: 130px; 
+            margin-top: 0; 
+            margin-bottom: 0; 
+            height: 48px; 
+            flex-shrink: 0;
+        }
+
+        .control-label {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        .batch-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .batch-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .batch-item input {
+            margin-top: 0;
+            margin-bottom: 0;
+            font-size: 0.95rem;
+            padding: 0.6rem;
+        }
+
+        .batch-item button {
+            width: 90px;
+            margin-top: 0;
+            margin-bottom: 0;
+            height: 42px;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        .matrix-table th, .matrix-table td {
+            padding: 0.65rem 0.75rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .matrix-table th {
+            background-color: var(--bg-box);
+            color: var(--text-heading);
+            font-weight: 700;
+        }
+
+        .matrix-table td {
+            background-color: var(--bg-card);
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="header-row">
+            <h1>Password &amp; Passphrase Analyzer</h1>
+            
+            <button 
+                id="theme-toggle" 
+                class="theme-toggle-btn" 
+                type="button" 
+                aria-label="Switch theme"
+                aria-pressed="false"
+            >
+                <span id="theme-icon" aria-hidden="true">🌙</span>
+                <span id="theme-text">Dark</span>
+            </button>
+        </div>
+
+        <div id="rateLimitBanner" class="alert-banner" role="alert" aria-live="assertive"></div>
+        
+        <!-- EVALUATOR CARD -->
+        <div class="card">
+            <h2>Password Strength Evaluator</h2>
+            <input 
+                type="password" 
+                id="passwordInput" 
+                placeholder="Enter password to analyze..." 
+                aria-label="Password to evaluate" 
+                autocomplete="new-password"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+            >
+            
+            <div class="grid">
+                <div class="metric-box">
+                    <div class="metric-title">Score</div>
+                    <div class="metric-value" id="scoreVal" aria-live="polite">- / 4</div>
+                    <div class="meter-container" aria-hidden="true">
+                        <div id="meterBar" class="meter-bar"></div>
+                    </div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-title">Entropy</div>
+                    <div class="metric-value" id="entropyVal" aria-live="polite">0 bits</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-title">Length</div>
+                    <div class="metric-value" id="lengthVal" aria-live="polite">0 chars</div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="metric-box"><div class="metric-title">Online Attack</div><div class="metric-value" id="onlineVal" style="font-size: 0.95rem;" aria-live="polite">-</div></div>
+                <div class="metric-box"><div class="metric-title">Offline Fast Hash (GPU)</div><div class="metric-value" id="fastHashVal" style="font-size: 0.95rem;" aria-live="polite">-</div></div>
+                <div class="metric-box"><div class="metric-title">Offline Slow Hash</div><div class="metric-value" id="slowHashVal" style="font-size: 0.95rem;" aria-live="polite">-</div></div>
+            </div>
+
+            <div class="metric-box" style="margin-top: 1rem;">
+                <div class="metric-title">Breach Exposure (HIBP)</div>
+                <div class="metric-value" id="hibpVal" style="font-size: 0.95rem; font-weight: normal;" aria-live="polite">-</div>
+            </div>
+
+            <!-- CRACKING SCENARIO MATRIX -->
+            <div style="margin-top: 1.5rem;">
+                <span class="control-label" style="font-weight: 700; color: var(--text-heading);">CRACKING SCENARIO MATRIX</span>
+                <table class="matrix-table">
+                    <thead>
+                        <tr>
+                            <th>Attack Scenario</th>
+                            <th>Guess Speed</th>
+                            <th>Time to Crack</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Online Throttled</strong> (e.g. Web Login)</td>
+                            <td>100 guesses / hr</td>
+                            <td id="matrixOnlineThrottled">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Online Unthrottled</strong> (No Rate Limit)</td>
+                            <td>10 guesses / sec</td>
+                            <td id="matrixOnlineUnthrottled">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Offline Slow Hash</strong> (bcrypt, Argon2)</td>
+                            <td>10,000 / sec</td>
+                            <td id="matrixOfflineSlow">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Offline Fast Hash</strong> (MD5, NTLM on GPUs)</td>
+                            <td>10,000,000,000 / sec</td>
+                            <td id="matrixOfflineFast">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PASSPHRASE GENERATOR CARD -->
+        <div class="card" style="margin-bottom: 0;">
+            <h2>EFF Passphrase Generator</h2>
+            
+            <div class="generator-row">
+                <input 
+                    type="text" 
+                    id="passphraseOutput" 
+                    readonly 
+                    placeholder="Generated passphrase..." 
+                    aria-label="Generated passphrase output"
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                >
+                <button type="button" id="copyBtn">Copy</button>
+            </div>
+
+            <!-- BATCH CONTAINER -->
+            <div id="batchContainer" class="batch-list" style="display: none;"></div>
+
+            <!-- CONTROLS GRID -->
+            <div class="grid-4">
+                <div>
+                    <label class="control-label" for="wordlistSelect">Wordlist</label>
+                    <select id="wordlistSelect">
+                        <option value="large" selected>EFF Large (7,776)</option>
+                        <option value="short">EFF Short (1,296)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="control-label" for="separatorSelect">Separator</label>
+                    <select id="separatorSelect">
+                        <option value="-" selected>Dash (-)</option>
+                        <option value="_">Underscore (_)</option>
+                        <option value=".">Dot (.)</option>
+                        <option value="space">Space ( )</option>
+                        <option value="number">Number (0-9)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="control-label" for="entropyTargetSelect">Target Entropy</label>
+                    <select id="entropyTargetSelect">
+                        <option value="custom" selected>Custom Length</option>
+                        <option value="60">60 bits (~5 words)</option>
+                        <option value="80">80 bits (~6 words)</option>
+                        <option value="100">100 bits (~8 words)</option>
+                        <option value="128">128 bits (~10 words)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="control-label" for="batchCountSelect">Batch Quantity</label>
+                    <select id="batchCountSelect">
+                        <option value="1" selected>1 Passphrase</option>
+                        <option value="5">5 Passphrases</option>
+                        <option value="10">10 Passphrases</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-top: 0;">
+                <div>
+                    <label class="control-label" for="wordCountSelect">Number of Words</label>
+                    <select id="wordCountSelect">
+                        <option value="3">3 Words</option>
+                        <option value="4" selected>4 Words</option>
+                        <option value="5">5 Words</option>
+                        <option value="6">6 Words</option>
+                        <option value="7">7 Words</option>
+                        <option value="8">8 Words</option>
+                        <option value="9">9 Words</option>
+                        <option value="10">10 Words</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="control-label">Calculated Entropy</label>
+                    <div class="metric-box" style="padding: 0.65rem; margin-top: 0.5rem;">
+                        <div class="metric-value" id="genEntropyVal" style="font-size: 1.05rem;">51.7 bits</div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" id="generateBtn" style="margin-top: 1rem; margin-bottom: 0;">Generate Passphrase</button>
+        </div>
+    </main>
+
+    <footer style="text-align: center; margin-top: 2rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+        <p style="margin: 0; font-weight: 600;">PasswordCheckerWeb {{ app_version }}</p>
+        <p style="margin: 0.25rem 0 0 0; font-size: 0.80rem;">Built with AI collaboration &amp; checked with local AI auditing</p>
+    </footer>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then((reg) => console.log('ServiceWorker registration successful with scope: ', reg.scope))
+                    .catch((err) => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
+    </script>
+
+    <script>
+        const toggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
+        const rateLimitBanner = document.getElementById('rateLimitBanner');
+        let clipboardClearTimer = null;
+
+        function updateThemeUI(isDark) {
+            toggleBtn.setAttribute('aria-pressed', isDark);
+            toggleBtn.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} theme`);
+            themeIcon.textContent = isDark ? '☀️' : '🌙';
+            themeText.textContent = isDark ? 'Light' : 'Dark';
+        }
+
+        const isDarkInitial = document.documentElement.classList.contains('dark');
+        updateThemeUI(isDarkInitial);
+
+        toggleBtn.addEventListener('click', () => {
+            const isDarkNow = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('pcw-theme', isDarkNow ? 'dark' : 'light');
+            updateThemeUI(isDarkNow);
+        });
+
+        function showRateLimitError(msg) {
+            rateLimitBanner.textContent = msg || '⚠️ Rate limit exceeded. Please slow down and try again shortly.';
+            rateLimitBanner.style.display = 'block';
+        }
+
+        function clearRateLimitError() {
+            rateLimitBanner.style.display = 'none';
+            rateLimitBanner.textContent = '';
+        }
+
+        // Automatic Entropy Target Calculation
+        document.getElementById('entropyTargetSelect').addEventListener('change', (e) => {
+            const target = e.target.value;
+            const wordlist = document.getElementById('wordlistSelect').value;
+            const bitsPerWord = (wordlist === 'short') ? 10.32 : 12.92;
+            
+            if (target !== 'custom') {
+                const requiredWords = Math.max(3, Math.min(10, Math.ceil(parseInt(target) / bitsPerWord)));
+                document.getElementById('wordCountSelect').value = requiredWords;
+            }
+            updateCalculatedEntropy();
+        });
+
+        document.getElementById('wordlistSelect').addEventListener('change', () => {
+            updateCalculatedEntropy();
+        });
+
+        document.getElementById('wordCountSelect').addEventListener('change', () => {
+            document.getElementById('entropyTargetSelect').value = 'custom';
+            updateCalculatedEntropy();
+        });
+
+        function updateCalculatedEntropy() {
+            const wordCount = parseInt(document.getElementById('wordCountSelect').value);
+            const wordlist = document.getElementById('wordlistSelect').value;
+            const bitsPerWord = (wordlist === 'short') ? 10.32 : 12.92;
+            const totalBits = (wordCount * bitsPerWord).toFixed(1);
+            document.getElementById('genEntropyVal').innerText = `${totalBits} bits`;
+        }
+
+        // Passphrase Generator Logic
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const wordCount = document.getElementById('wordCountSelect').value;
+            const wordlist = document.getElementById('wordlistSelect').value;
+            const separator = document.getElementById('separatorSelect').value;
+            const count = document.getElementById('batchCountSelect').value;
+
+            try {
+                const response = await fetch(`/api/generate?words=${wordCount}&wordlist=${wordlist}&separator=${encodeURIComponent(separator)}&count=${count}`);
+                if (response.status === 429) {
+                    const data = await response.json();
+                    showRateLimitError(data.message);
+                    return;
+                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                clearRateLimitError();
+                const data = await response.json();
+
+                const primaryInput = document.getElementById('passphraseOutput');
+                const batchContainer = document.getElementById('batchContainer');
+
+                if (data.passphrases && data.passphrases.length > 1) {
+                    primaryInput.style.display = 'none';
+                    document.getElementById('copyBtn').style.display = 'none';
+                    batchContainer.style.display = 'flex';
+                    batchContainer.innerHTML = '';
+
+                    data.passphrases.forEach((phrase, idx) => {
+                        const item = document.createElement('div');
+                        item.className = 'batch-item';
+                        item.innerHTML = `
+                            <input type="text" readonly value="${phrase}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                            <button type="button" onclick="copyText('${phrase.replace(/'/g, "\\'")}', this)">Copy</button>
+                        `;
+                        batchContainer.appendChild(item);
+                    });
+                } else if (data.passphrase) {
+                    primaryInput.style.display = 'block';
+                    document.getElementById('copyBtn').style.display = 'block';
+                    batchContainer.style.display = 'none';
+                    primaryInput.value = data.passphrase;
+                }
+
+                if (data.entropy_bits) {
+                    document.getElementById('genEntropyVal').innerText = `${data.entropy_bits} bits`;
+                }
+
+            } catch (err) {
+                console.error('Failed to generate passphrase', err);
+            }
+        });
+
+        async function copyText(text, btnElement) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const temp = document.createElement('input');
+                    document.body.appendChild(temp);
+                    temp.value = text;
+                    temp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(temp);
+                }
+                
+                const origText = btnElement.innerText;
+                btnElement.innerText = 'Copied!';
+                setTimeout(() => { btnElement.innerText = origText; }, 1500);
+
+                if (clipboardClearTimer) clearTimeout(clipboardClearTimer);
+                clipboardClearTimer = setTimeout(async () => {
+                    try {
+                        if (navigator.clipboard && window.isSecureContext) {
+                            const currentClip = await navigator.clipboard.readText();
+                            if (currentClip === text) {
+                                await navigator.clipboard.writeText('');
+                            }
+                        }
+                    } catch (e) {}
+                }, 30000);
+
+            } catch (err) {
+                console.error('Copy failed', err);
+            }
+        }
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const val = document.getElementById('passphraseOutput').value;
+            if (val) copyText(val, document.getElementById('copyBtn'));
+        });
+
+        function debounce(func, delay = 300) {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func(...args), delay);
+            };
+        }
+
+        document.getElementById('passwordInput').addEventListener('input', debounce((e) => {
+            evaluatePassword(e.target.value);
+        }, 300));
+
+        const meterColors = [
+            'var(--meter-0)',
+            'var(--meter-1)',
+            'var(--meter-2)',
+            'var(--meter-3)',
+            'var(--meter-4)'
+        ];
+
+        const meterWidths = ['15%', '35%', '55%', '80%', '100%'];
+
+        async function evaluatePassword(password) {
+            const meterBar = document.getElementById('meterBar');
+            document.getElementById('lengthVal').innerText = password.length + ' chars';
+            
+            if (!password) {
+                clearRateLimitError();
+                document.getElementById('scoreVal').innerText = '- / 4';
+                document.getElementById('scoreVal').style.color = 'var(--text-primary)';
+                document.getElementById('entropyVal').innerText = '0 bits';
+                document.getElementById('onlineVal').innerText = '-';
+                document.getElementById('fastHashVal').innerText = '-';
+                document.getElementById('slowHashVal').innerText = '-';
+                document.getElementById('hibpVal').innerText = '-';
+                document.getElementById('hibpVal').style.color = 'var(--text-primary)';
+                
+                document.getElementById('matrixOnlineThrottled').innerText = '-';
+                document.getElementById('matrixOnlineUnthrottled').innerText = '-';
+                document.getElementById('matrixOfflineSlow').innerText = '-';
+                document.getElementById('matrixOfflineFast').innerText = '-';
+                
+                meterBar.style.width = '0%';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password })
+                });
+
+                if (response.status === 429) {
+                    const data = await response.json();
+                    showRateLimitError(data.message);
+                    return;
+                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                clearRateLimitError();
+                const data = await response.json();
+                const score = (data.score !== undefined && data.score >= 0 && data.score <= 4) ? data.score : 0;
+                
+                document.getElementById('scoreVal').innerText = score + ' / 4';
+                document.getElementById('scoreVal').style.color = meterColors[score];
+
+                meterBar.style.width = meterWidths[score];
+                meterBar.style.backgroundColor = meterColors[score];
+
+                document.getElementById('entropyVal').innerText = (data.entropy !== undefined ? Math.round(data.entropy) : 0) + ' bits';
+                
+                const onlineThrottled = data.crack_times_display?.online_throttling_100_per_hour || '-';
+                const onlineUnthrottled = data.crack_times_display?.online_no_throttling_10_per_second || '-';
+                const slowHash = data.crack_times_display?.offline_slow_hashing_1e4_per_second || '-';
+                const fastHash = data.crack_times_display?.offline_fast_hashing_1e10_per_second || '-';
+
+                document.getElementById('onlineVal').innerText = onlineThrottled;
+                document.getElementById('fastHashVal').innerText = fastHash;
+                document.getElementById('slowHashVal').innerText = slowHash;
+
+                document.getElementById('matrixOnlineThrottled').innerText = onlineThrottled;
+                document.getElementById('matrixOnlineUnthrottled').innerText = onlineUnthrottled;
+                document.getElementById('matrixOfflineSlow').innerText = slowHash;
+                document.getElementById('matrixOfflineFast').innerText = fastHash;
+                
+                if (data.hibp) {
+                    if (data.hibp.found) {
+                        document.getElementById('hibpVal').innerText = `Found in ${data.hibp.count.toLocaleString()} breaches!`;
+                        document.getElementById('hibpVal').style.color = 'var(--color-danger)';
+                    } else {
+                        document.getElementById('hibpVal').innerText = 'No breaches found';
+                        document.getElementById('hibpVal').style.color = 'var(--color-success)';
+                    }
+                }
+            } catch (err) {
+                console.error('Evaluation error', err);
+            }
+        }
+    </script>
+</body>
+</html>

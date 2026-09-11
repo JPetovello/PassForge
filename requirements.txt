@@ -1,0 +1,7 @@
+Flask>=3.0.0
+zxcvbn-python>=4.4.24
+requests>=2.31.0
+Flask-Limiter
+redis>=5.0.0
+packaging
+gunicorn

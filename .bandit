@@ -1,0 +1,4 @@
+# Central Bandit Security Configuration
+skips:
+  - 'B104'  # Hardcoded 0.0.0.0 bind (Required for Docker container networks)
+  - 'B324'  # SHA-1 usage (Required by Have I Been Pwned k-Anonymity API spec)

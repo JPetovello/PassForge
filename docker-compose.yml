@@ -1,0 +1,22 @@
+services:
+  web:
+    image: hardly007/password-checker-web:latest
+    container_name: password-checker-web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - RATELIMIT_DEFAULT=200 per day;50 per hour
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: password-checker-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
