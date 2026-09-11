@@ -14,28 +14,15 @@ A lightweight, secure web application for evaluating password strength, calculat
 
 ## Installation
 
-### Standard Docker / Docker Desktop
-
-Run the container using Docker CLI:
-
-```bash
-docker run -d \
-  --name password-checker-web \
-  -p 5000:5000 \
-  -e APP_SOURCE="docker_standalone" \
-  hardly007/password-checker-web:latest
-```
-
 ### Unraid (Community Applications)
 
-Search for Password Checker Web in the Unraid Community Applications tab and install it directly using the official template. The deployment source will automatically register as unraid_ca.
+Search for Password Checker Web in the Unraid Community Applications tab and install it directly using the official template.
 
 ## Environment Variables
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `PORT` | `5000` | Port the internal Gunicorn / Flask web server listens on. |
-| `APP_SOURCE` | `docker_standalone` | Identifies where the container was deployed (e.g., `unraid_ca`). |
 | `REDIS_URL` | *(blank)* | Full Redis connection URI (e.g., `redis://:secret@192.168.1.50:6379/0`). Overrides individual host/port variables when populated. |
 | `REDIS_HOST` | `localhost` | Redis host or IP address. Used when `REDIS_URL` is empty or omitted. |
 | `REDIS_PORT` | `6379` | Redis port number. Used when `REDIS_URL` is empty or omitted. |

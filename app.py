@@ -58,9 +58,8 @@ if REDIS_URL.startswith("redis://"):
     except Exception as e:
         print(f"[Redis Warning] Could not connect to Redis ({REDIS_URL}): {e}")
 
-# Grab version and install source from environment variables
+# Grab application version from environment
 APP_VERSION = os.environ.get("APP_VERSION", "latest")
-INSTALL_SOURCE = os.environ.get("INSTALL_SOURCE", "DockerHub / Manual")
 
 # Load EFF Wordlists into memory at app startup with SHA-256 integrity verification
 EFF_LARGE_WORDS = []
