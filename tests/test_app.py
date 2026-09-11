@@ -1,4 +1,5 @@
 import pytest
+import app as app_module
 from app import app, limiter
 
 @pytest.fixture
@@ -58,6 +59,54 @@ def test_evaluate_zero_knowledge_sha1(client):
     data = response.get_json()
     assert "hibp" in data
     assert "found" in data["hibp"]
+
+def test_hibp_clean_result_is_available(client, monkeypatch):
+    """Verify a successful HIBP lookup with no match is reported as clean and available."""
+    class FakeResponse:
+        status_code = 200
+        text = "11111111111111111111111111111111111:42"
+
+    monkeypatch.setattr(
+        app_module.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse()
+    )
+
+    response = client.post('/api/evaluate', json={
+        "sha1_prefix": "ABCDE",
+        "sha1_suffix": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["hibp"]["available"] is True
+    assert data["hibp"]["found"] is False
+    assert data["hibp"]["count"] == 0
+
+
+def test_hibp_http_failure_is_unavailable(client, monkeypatch):
+    """Verify an HIBP HTTP failure is not reported as zero breaches."""
+    class FakeResponse:
+        status_code = 503
+        text = ""
+
+    monkeypatch.setattr(
+        app_module.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse()
+    )
+
+    response = client.post('/api/evaluate', json={
+        "sha1_prefix": "ABCDE",
+        "sha1_suffix": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["hibp"]["available"] is False
+    assert data["hibp"]["found"] is False
+    assert data["hibp"]["count"] is None
+
 
 def test_generate_passphrase_defaults(client):
     """Verify passphrase generator default output."""

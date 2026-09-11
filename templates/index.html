@@ -797,7 +797,10 @@
                 document.getElementById('matrixOfflineFast').innerText = fastHash;
                 
                 if (data.hibp) {
-                    if (data.hibp.found) {
+                    if (data.hibp.available === false) {
+                        document.getElementById('hibpVal').innerText = 'HIBP check unavailable';
+                        document.getElementById('hibpVal').style.color = 'var(--text-primary)';
+                    } else if (data.hibp.found) {
                         document.getElementById('hibpVal').innerText = `Found in ${data.hibp.count.toLocaleString()} breaches!`;
                         document.getElementById('hibpVal').style.color = 'var(--color-danger)';
                     } else {

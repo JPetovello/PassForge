@@ -142,7 +142,8 @@ def check_hibp_by_prefix(prefix, suffix):
     try:
         res = requests.get(url, headers=headers, timeout=5)
         if res.status_code != 200:
-            return 0
+            print(f"[HIBP Error] API returned HTTP {res.status_code}")
+            return None
 
         for line in res.text.splitlines():
             if ':' in line:
@@ -151,7 +152,7 @@ def check_hibp_by_prefix(prefix, suffix):
                     return int(count)
     except Exception as e:
         print(f"[HIBP Error] {e}")
-        return 0
+        return None
 
     return 0
 
@@ -243,7 +244,8 @@ def evaluate_password():
         'feedback': results.get('feedback', {}),
         'crack_times_display': capitalized_crack_times,
         'hibp': {
-            'found': pwned_count > 0,
+            'available': pwned_count is not None,
+            'found': pwned_count is not None and pwned_count > 0,
             'count': pwned_count
         }
     })
