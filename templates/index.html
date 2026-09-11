@@ -496,10 +496,10 @@
                     <label class="control-label" for="entropyTargetSelect">Target Entropy</label>
                     <select id="entropyTargetSelect">
                         <option value="custom" selected>Custom Length</option>
-                        <option value="60">60 bits (~5 words)</option>
-                        <option value="80">80 bits (~6 words)</option>
-                        <option value="100">100 bits (~8 words)</option>
-                        <option value="128">128 bits (~10 words)</option>
+                        <option value="60">60 bits</option>
+                        <option value="80">80 bits</option>
+                        <option value="100">100 bits</option>
+                        <option value="128">128 bits</option>
                     </select>
                 </div>
 
@@ -610,31 +610,70 @@
             return totalBits;
         }
 
+        function requiredWordsForEntropy(targetBits, wordlist, separator) {
+            for (let words = 3; words <= 10; words++) {
+                const entropy = calculateGenerationEntropy(words, wordlist, separator);
+
+                if (entropy !== null && entropy >= targetBits) {
+                    return words;
+                }
+            }
+
+            return null;
+        }
+
+        function updateEntropyTargetLabels() {
+            const wordlist = document.getElementById('wordlistSelect').value;
+            const separator = document.getElementById('separatorSelect').value;
+            const targetSelect = document.getElementById('entropyTargetSelect');
+
+            for (const option of targetSelect.options) {
+                if (option.value === 'custom') {
+                    continue;
+                }
+
+                const targetBits = parseInt(option.value);
+                const requiredWords = requiredWordsForEntropy(
+                    targetBits,
+                    wordlist,
+                    separator
+                );
+
+                if (requiredWords === null) {
+                    option.textContent = `${targetBits} bits (>10 words)`;
+                } else {
+                    option.textContent =
+                        `${targetBits} bits (~${requiredWords} ${requiredWords === 1 ? 'word' : 'words'})`;
+                }
+            }
+        }
+
         function updateEntropyTarget() {
             const target = document.getElementById('entropyTargetSelect').value;
             const wordlist = document.getElementById('wordlistSelect').value;
             const separator = document.getElementById('separatorSelect').value;
 
+            updateEntropyTargetLabels();
+
             if (target !== 'custom') {
                 const targetBits = parseInt(target);
-                let requiredWords = 10;
+                const requiredWords = requiredWordsForEntropy(
+                    targetBits,
+                    wordlist,
+                    separator
+                );
 
-                for (let words = 3; words <= 10; words++) {
-                    const entropy = calculateGenerationEntropy(words, wordlist, separator);
-
-                    if (entropy !== null && entropy >= targetBits) {
-                        requiredWords = words;
-                        break;
-                    }
+                if (requiredWords !== null) {
+                    document.getElementById('wordCountSelect').value = requiredWords;
                 }
-
-                document.getElementById('wordCountSelect').value = requiredWords;
             }
 
             updateCalculatedEntropy();
         }
 
         // Automatic Entropy Target Calculation
+        updateEntropyTargetLabels();
+
         document.getElementById('entropyTargetSelect').addEventListener('change', updateEntropyTarget);
 
         document.getElementById('wordlistSelect').addEventListener('change', updateEntropyTarget);

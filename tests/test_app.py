@@ -532,3 +532,25 @@ def test_load_wordlist_rejects_wrong_line_count(tmp_path, monkeypatch):
     )
 
     assert words == []
+
+def test_entropy_target_labels_are_dynamic(client):
+    """Entropy target word-count hints must be calculated from the active generator settings."""
+    response = client.get('/')
+
+    assert response.status_code == 200
+
+    html = response.get_data(as_text=True)
+
+    assert '<option value="60">60 bits</option>' in html
+    assert '<option value="80">80 bits</option>' in html
+    assert '<option value="100">100 bits</option>' in html
+    assert '<option value="128">128 bits</option>' in html
+
+    assert '60 bits (~5 words)' not in html
+    assert '80 bits (~6 words)' not in html
+    assert '100 bits (~8 words)' not in html
+    assert '128 bits (~10 words)' not in html
+
+    assert 'function requiredWordsForEntropy' in html
+    assert 'function updateEntropyTargetLabels' in html
+
