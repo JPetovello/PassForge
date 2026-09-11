@@ -204,3 +204,151 @@ def test_hibp_rejects_invalid_sha1_suffix_length(client, monkeypatch):
 
     assert response.status_code == 400
     assert called["requests_get"] is False
+
+
+def test_hibp_rejects_invalid_sha1_prefix_length(client, monkeypatch):
+    """Verify zero-knowledge HIBP mode rejects prefixes that are not exactly 5 hex characters."""
+    called = {"requests_get": False}
+
+    def fake_get(*args, **kwargs):
+        called["requests_get"] = True
+        raise AssertionError("HIBP should not be called for an invalid prefix")
+
+    monkeypatch.setattr(app_module.requests, "get", fake_get)
+
+    response = client.post('/api/evaluate', json={
+        "sha1_prefix": "ABCD",
+        "sha1_suffix": "F" * 35
+    })
+
+    assert response.status_code == 400
+    assert called["requests_get"] is False
+
+
+def test_hibp_rejects_non_hex_sha1_input(client, monkeypatch):
+    """Verify zero-knowledge HIBP mode rejects non-hexadecimal prefix/suffix input."""
+    called = {"requests_get": False}
+
+    def fake_get(*args, **kwargs):
+        called["requests_get"] = True
+        raise AssertionError("HIBP should not be called for malformed SHA-1 input")
+
+    monkeypatch.setattr(app_module.requests, "get", fake_get)
+
+    response = client.post('/api/evaluate', json={
+        "sha1_prefix": "ABCGH",
+        "sha1_suffix": ("F" * 34) + "Z"
+    })
+
+    assert response.status_code == 400
+    assert called["requests_get"] is False
+
+
+def test_evaluate_all_space_password_is_valid_input(client, monkeypatch):
+    """Verify a password made only of spaces is still evaluated exactly as submitted."""
+    original_password = "   "
+
+    seen = {
+        "zxcvbn": None,
+        "hibp": None,
+    }
+
+    def fake_zxcvbn(password):
+        seen["zxcvbn"] = password
+        return {
+            "score": 0,
+            "feedback": {},
+            "crack_times_display": {}
+        }
+
+    def fake_check_hibp(password):
+        seen["hibp"] = password
+        return 0
+
+    monkeypatch.setattr(app_module.zxcvbn, "zxcvbn", fake_zxcvbn)
+    monkeypatch.setattr(app_module, "check_hibp", fake_check_hibp)
+
+    response = client.post('/api/evaluate', json={
+        "password": original_password
+    })
+
+    assert response.status_code == 200
+    assert seen["zxcvbn"] == original_password
+    assert seen["hibp"] == original_password
+
+
+def test_evaluate_rejects_password_over_256_characters(client, monkeypatch):
+    """Verify passwords longer than the documented 256-character limit are rejected."""
+    called = {
+        "zxcvbn": False,
+        "hibp": False,
+    }
+
+    def fake_zxcvbn(password):
+        called["zxcvbn"] = True
+        raise AssertionError("zxcvbn should not run for an oversized password")
+
+    def fake_check_hibp(password):
+        called["hibp"] = True
+        raise AssertionError("HIBP should not run for an oversized password")
+
+    monkeypatch.setattr(app_module.zxcvbn, "zxcvbn", fake_zxcvbn)
+    monkeypatch.setattr(app_module, "check_hibp", fake_check_hibp)
+
+    response = client.post('/api/evaluate', json={
+        "password": "A" * 257
+    })
+
+    assert response.status_code == 400
+    assert called["zxcvbn"] is False
+    assert called["hibp"] is False
+
+    data = response.get_json()
+    assert data["error"] == "Password exceeds maximum allowed length of 256 characters"
+
+
+def test_hibp_positive_match_reports_breach_count(client, monkeypatch):
+    """Verify a matching HIBP suffix is reported as breached with the correct count."""
+    target_suffix = "F" * 35
+
+    class FakeResponse:
+        status_code = 200
+        text = f"{target_suffix}:12345\n{'A' * 35}:7"
+
+    monkeypatch.setattr(
+        app_module.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse()
+    )
+
+    response = client.post('/api/evaluate', json={
+        "sha1_prefix": "ABCDE",
+        "sha1_suffix": target_suffix
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()
+
+    assert data["hibp"]["available"] is True
+    assert data["hibp"]["found"] is True
+    assert data["hibp"]["count"] == 12345
+
+
+def test_hibp_request_exception_is_unavailable(client, monkeypatch):
+    """Verify a request exception is reported as HIBP unavailable, not as a clean result."""
+    def fake_get(*args, **kwargs):
+        raise app_module.requests.RequestException("simulated network failure")
+
+    monkeypatch.setattr(app_module.requests, "get", fake_get)
+
+    response = client.post('/api/evaluate', json={
+        "sha1_prefix": "ABCDE",
+        "sha1_suffix": "F" * 35
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()
+
+    assert data["hibp"]["available"] is False
+    assert data["hibp"]["found"] is False
+    assert data["hibp"]["count"] is None
