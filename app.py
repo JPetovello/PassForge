@@ -171,28 +171,38 @@ def apply_security_headers(response):
     response.headers['Content-Security-Policy'] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';"
     return response
 
-def check_hibp_by_prefix(prefix, suffix):
-    """Check HIBP via k-Anonymity using pre-computed prefix and suffix with strict format validation."""
-    if not re.fullmatch(r'^[0-9A-F]{5}$', prefix) or not re.fullmatch(r'^[0-9A-F]{35}$', suffix):
-        return 0
-
+def fetch_hibp_range(prefix):
+    """Fetch a padded HIBP hash range using only a validated five-character prefix."""
+    if not re.fullmatch(r'^[0-9A-F]{5}$', prefix):
+        return None
     url = f"https://api.pwnedpasswords.com/range/{prefix}"
     headers = {'User-Agent': 'PassForge-Homelab-App', 'Add-Padding': 'true'}
-    
+
     try:
         res = requests.get(url, headers=headers, timeout=5)
         if res.status_code != 200:
             print(f"[HIBP Error] API returned HTTP {res.status_code}")
             return None
-
-        for line in res.text.splitlines():
-            if ':' in line:
-                h, count = line.split(':', 1)
-                if h.strip() == suffix:
-                    return int(count)
+        return res.text
     except Exception as e:
         print(f"[HIBP Error] {e}")
         return None
+
+
+def check_hibp_by_prefix(prefix, suffix):
+    """Check HIBP via k-Anonymity using pre-computed prefix and suffix."""
+    if not re.fullmatch(r'^[0-9A-F]{5}$', prefix) or not re.fullmatch(r'^[0-9A-F]{35}$', suffix):
+        return 0
+
+    range_text = fetch_hibp_range(prefix)
+    if range_text is None:
+        return None
+
+    for line in range_text.splitlines():
+        if ':' in line:
+            h, count = line.split(':', 1)
+            if h.strip() == suffix:
+                return int(count)
 
     return 0
 
@@ -314,6 +324,21 @@ def evaluate_password():
             'count': pwned_count
         }
     })
+
+
+@app.route('/api/hibp/<prefix>', methods=['GET'])
+@limiter.limit("15 per minute")
+def hibp_range(prefix):
+    """Proxy a padded HIBP range lookup without receiving a password or full hash."""
+    normalized_prefix = sanitize_input(prefix).upper()
+    if not re.fullmatch(r'^[0-9A-F]{5}$', normalized_prefix):
+        return jsonify({'error': 'Invalid SHA-1 prefix format'}), 400
+
+    range_text = fetch_hibp_range(normalized_prefix)
+    if range_text is None:
+        return jsonify({'error': 'HIBP check unavailable'}), 503
+
+    return range_text, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 @app.route('/api/generate', methods=['GET'])
 @limiter.limit("30 per minute")
