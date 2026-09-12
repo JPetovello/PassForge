@@ -65,7 +65,7 @@ jobs:
           -x ./.venv,./tests,./.pytest_cache,./__pycache__
 
       - name: Scan repository with Trivy
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -78,7 +78,7 @@ jobs:
         run: docker build --tag passforge-security:${{ github.sha }} .
 
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: passforge-security:${{ github.sha }}
           scanners: vuln,secret,misconfig
