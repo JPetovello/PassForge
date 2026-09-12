@@ -254,6 +254,28 @@ def favicon():
 def robots():
     return "User-agent: *\nDisallow: /", 200, {'Content-Type': 'text/plain'}
 
+@app.route('/wordlists/<list_type>.txt', methods=['GET'])
+@limiter.exempt
+def wordlist(list_type):
+    """Serve only wordlists that passed startup integrity verification."""
+    wordlists = {
+        'large': EFF_LARGE_WORDS,
+        'short': EFF_SHORT_WORDS,
+    }
+    if list_type not in wordlists:
+        return jsonify({'error': 'Invalid wordlist type'}), 404
+
+    words = wordlists[list_type]
+    if not words:
+        return jsonify({'error': f'EFF {list_type.title()} wordlist is unavailable'}), 503
+
+    response = app.response_class(
+        '\n'.join(words) + '\n',
+        mimetype='text/plain',
+    )
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
+
 @app.route('/healthz', methods=['GET'])
 @limiter.exempt
 def healthcheck():
