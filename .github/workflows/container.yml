@@ -63,6 +63,15 @@ jobs:
           python-version: '3.13'
           cache: pip
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Audit vendored browser dependency metadata
+        run: npm audit --omit=dev
+
       - name: Install security tools
         run: python -m pip install bandit==1.9.4 pip-audit==2.10.1
 

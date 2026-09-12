@@ -31,7 +31,7 @@ def test_static_routes(client):
     sw_res = client.get('/sw.js')
     assert sw_res.status_code == 200
     assert sw_res.mimetype == 'application/javascript'
-    assert "passforge-v2" in sw_res.get_data(as_text=True)
+    assert "passforge-v3" in sw_res.get_data(as_text=True)
 
 
 

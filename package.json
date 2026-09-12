@@ -1,0 +1,13 @@
+{
+  "name": "passforge-browser-dependencies",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Locked metadata for PassForge vendored browser dependencies.",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs"
+  },
+  "dependencies": {
+    "js-sha1": "0.7.0",
+    "zxcvbn": "4.4.2"
+  }
+}

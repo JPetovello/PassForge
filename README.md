@@ -1,16 +1,31 @@
 # PassForge
 
-A lightweight, secure web application for evaluating password strength, calculating entropy, checking against known data breaches via the Have I Been Pwned API, and generating secure passphrases. Built with Flask, Python, and Tailwind CSS, featuring local k-Anonymity privacy protection.
+A lightweight, self-hosted password analysis and secure passphrase generation application. Password analysis, SHA-1 hashing, HIBP suffix matching, and passphrase generation occur locally in the browser.
 
 ## Features
 
-* **Password Strength Evaluation:** Powered by zxcvbn for robust, pattern-based strength checks with detailed cracking scenario breakdowns.
-* **Breach Detection:** Checks passwords securely using the Have I Been Pwned (HIBP) API via k-Anonymity (only the first 5 characters of the SHA-1 hash are sent).
-* **Entropy Calculation:** Real-time mathematical entropy calculation based on character set size and length.
-* **Secure Passphrase Generator:** Generates memorable, high-entropy passphrases using the EFF Large and Short Wordlists with custom separators and batch options.
-* **Progressive Web App (PWA) Support:** Installable directly to mobile or desktop home screens with offline static asset caching via service worker.
-* **Dark Mode & System Theme Sync:** Automatically detects system color preferences with manual toggle override and `localStorage` persistence.
-* **Privacy-First:** Passwords are analyzed by your PassForge instance. For HIBP breach checks, PassForge hashes the password locally and sends only the first 5 characters of the SHA-1 hash to Have I Been Pwned; the plaintext password is never sent to HIBP.
+* **Local Password Strength Evaluation:** Runs the vendored zxcvbn 4.4.2 library inside the browser.
+* **Privacy-Preserving Breach Detection:** Hashes the password in the browser and sends only the first 5 SHA-1 characters to the PassForge HIBP proxy. The complete hash and plaintext password never reach the PassForge server or HIBP.
+* **Estimated Guess Entropy:** Derives an estimated bit value from zxcvbn's password-guess estimate rather than assuming randomly selected characters.
+* **Local Secure Passphrase Generator:** Uses the browser's cryptographically secure random-number generator with verified EFF Large and Short Wordlists.
+* **Batch Generation:** Generates up to 10 passphrases without transmitting the generated values to the server.
+* **Progressive Web App Support:** Installable on supported mobile and desktop browsers.
+* **Dark Mode & System Theme Sync:** Supports automatic and manually selected themes.
+
+## Privacy Architecture
+
+PassForge does not submit plaintext passwords, complete password hashes, or generated passphrases to its Flask server.
+
+For a breach check:
+
+1. The browser calculates the password's SHA-1 hash locally.
+2. The browser sends only the first 5 hash characters to PassForge.
+3. PassForge requests the corresponding padded HIBP k-Anonymity range.
+4. The browser compares the remaining 35 hash characters locally.
+
+Passphrase generation also occurs entirely in the browser. The server supplies only wordlists that passed bundled SHA-256 and entry-count verification.
+
+Use only a PassForge instance you trust. HTTPS is recommended whenever traffic crosses an untrusted network because the browser application itself must be delivered without tampering.
 
 ## Installation
 
