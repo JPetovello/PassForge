@@ -7,9 +7,6 @@ worker_class = "gthread"
 timeout = 30
 keepalive = 2
 
-# Disable Gunicorn 26 control server socket to prevent non-root write errors
-control_socket_path = None
-
 # Access and error logging
 accesslog = "-"
 errorlog = "-"
