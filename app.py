@@ -60,9 +60,9 @@ if REDIS_URL.startswith("redis://"):
     try:
         redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
         redis_client.ping()
-        print(f"[Redis] Successfully connected to Redis instance ({REDIS_URL}).")
+        print("[Redis] Successfully connected to configured Redis instance.")
     except Exception as e:
-        print(f"[Redis Warning] Could not connect to Redis ({REDIS_URL}): {e}")
+        print(f"[Redis Warning] Could not connect to configured Redis instance ({type(e).__name__}).")
 
 # Load and verify bundled EFF wordlists at app startup
 EFF_LARGE_SHA256 = "addd35536511597a02fa0a9ff1e5284677b8883b83e986e43f15a3db996b903e"
@@ -163,6 +163,8 @@ def sanitize_input(user_input: str) -> str:
 @app.after_request
 def apply_security_headers(response):
     """Attach standard production security headers to all responses."""
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
@@ -267,7 +269,9 @@ def healthcheck():
 @app.route('/api/evaluate', methods=['POST'])
 @limiter.limit("15 per minute")
 def evaluate_password():
-    data = request.get_json() or {}
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
     
     sha1_prefix = sanitize_input(data.get('sha1_prefix', '')).upper()
     sha1_suffix = sanitize_input(data.get('sha1_suffix', '')).upper()
