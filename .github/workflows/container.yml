@@ -47,7 +47,7 @@ jobs:
         run: python -m pytest -q
 
       - name: Run frontend test suite
-        run: node --test tests/frontend.test.cjs
+        run: node --test tests/*.test.cjs
 
   security:
     name: Security

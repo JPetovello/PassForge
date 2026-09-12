@@ -721,56 +721,170 @@
                 entropy === null ? 'Unavailable' : `${entropy.toFixed(1)} bits`;
         }
 
-        // Passphrase Generator Logic
+        const wordlistCache = new Map();
+
+        async function loadWordlist(listType) {
+            if (wordlistCache.has(listType)) return wordlistCache.get(listType);
+            if (!Object.hasOwn(wordlistSizes, listType) || !wordlistSizes[listType]) {
+                throw new Error('Selected wordlist is unavailable');
+            }
+
+            const response = await fetch(`/wordlists/${listType}.txt`, {
+                method: 'GET',
+                headers: { 'Accept': 'text/plain' },
+                cache: 'force-cache'
+            });
+            if (!response.ok) {
+                throw new Error(`Wordlist request failed: ${response.status}`);
+            }
+
+            const words = (await response.text()).split(/\r?\n/).filter(Boolean);
+            if (words.length !== wordlistSizes[listType]) {
+                throw new Error('Wordlist integrity count mismatch');
+            }
+
+            wordlistCache.set(listType, words);
+            return words;
+        }
+
+        function secureRandomIndex(maxExclusive) {
+            if (!Number.isSafeInteger(maxExclusive) || maxExclusive <= 0) {
+                throw new Error('Invalid random selection range');
+            }
+
+            const range = 0x100000000;
+            const limit = Math.floor(range / maxExclusive) * maxExclusive;
+            const randomValue = new Uint32Array(1);
+
+            do {
+                crypto.getRandomValues(randomValue);
+            } while (randomValue[0] >= limit);
+
+            return randomValue[0] % maxExclusive;
+        }
+
+        function generateLocalPassphrase(wordPool, wordCount, separator) {
+            const selectedWords = Array.from(
+                { length: wordCount },
+                () => wordPool[secureRandomIndex(wordPool.length)]
+            );
+
+            if (separator === 'number') {
+                return selectedWords
+                    .map((word, index) =>
+                        index === selectedWords.length - 1
+                            ? word
+                            : `${word}${secureRandomIndex(10)}`
+                    )
+                    .join('');
+            }
+
+            const separators = {
+                '-': '-',
+                '_': '_',
+                '.': '.',
+                'space': ' '
+            };
+
+            if (!Object.hasOwn(separators, separator)) {
+                throw new Error('Invalid separator');
+            }
+
+            return selectedWords.join(separators[separator]);
+        }
+
+        function renderPassphrases(passphrases) {
+            const primaryInput = document.getElementById('passphraseOutput');
+            const copyButton = document.getElementById('copyBtn');
+            const batchContainer = document.getElementById('batchContainer');
+
+            if (passphrases.length === 1) {
+                primaryInput.style.display = 'block';
+                copyButton.style.display = 'block';
+                batchContainer.style.display = 'none';
+                batchContainer.replaceChildren();
+                primaryInput.value = passphrases[0];
+                return;
+            }
+
+            primaryInput.value = '';
+            primaryInput.style.display = 'none';
+            copyButton.style.display = 'none';
+            batchContainer.style.display = 'flex';
+            batchContainer.replaceChildren();
+
+            for (const phrase of passphrases) {
+                const item = document.createElement('div');
+                item.className = 'batch-item';
+
+                const output = document.createElement('input');
+                output.type = 'text';
+                output.readOnly = true;
+                output.value = phrase;
+                output.autocomplete = 'off';
+                output.autocorrect = 'off';
+                output.autocapitalize = 'off';
+                output.spellcheck = false;
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.innerText = 'Copy';
+                button.addEventListener('click', () => copyText(phrase, button));
+
+                item.append(output, button);
+                batchContainer.appendChild(item);
+            }
+        }
+
+        // Generation occurs entirely within the browser.
         document.getElementById('generateBtn').addEventListener('click', async () => {
-            const wordCount = document.getElementById('wordCountSelect').value;
+            const generateButton = document.getElementById('generateBtn');
+            const wordCount = Number.parseInt(
+                document.getElementById('wordCountSelect').value,
+                10
+            );
             const wordlist = document.getElementById('wordlistSelect').value;
             const separator = document.getElementById('separatorSelect').value;
-            const count = document.getElementById('batchCountSelect').value;
+            const count = Number.parseInt(
+                document.getElementById('batchCountSelect').value,
+                10
+            );
+
+            generateButton.disabled = true;
 
             try {
-                const response = await fetch(`/api/generate?words=${wordCount}&wordlist=${wordlist}&separator=${encodeURIComponent(separator)}&count=${count}`);
-                if (response.status === 429) {
-                    const data = await response.json();
-                    showRateLimitError(data.message);
-                    return;
+                if (!Number.isInteger(wordCount) || wordCount < 3 || wordCount > 10) {
+                    throw new Error('Invalid word count');
                 }
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
-                clearRateLimitError();
-                const data = await response.json();
-
-                const primaryInput = document.getElementById('passphraseOutput');
-                const batchContainer = document.getElementById('batchContainer');
-
-                if (data.passphrases && data.passphrases.length > 1) {
-                    primaryInput.style.display = 'none';
-                    document.getElementById('copyBtn').style.display = 'none';
-                    batchContainer.style.display = 'flex';
-                    batchContainer.innerHTML = '';
-
-                    data.passphrases.forEach((phrase, idx) => {
-                        const item = document.createElement('div');
-                        item.className = 'batch-item';
-                        item.innerHTML = `
-                            <input type="text" readonly value="${phrase}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                            <button type="button" onclick="copyText('${phrase.replace(/'/g, "\\'")}', this)">Copy</button>
-                        `;
-                        batchContainer.appendChild(item);
-                    });
-                } else if (data.passphrase) {
-                    primaryInput.style.display = 'block';
-                    document.getElementById('copyBtn').style.display = 'block';
-                    batchContainer.style.display = 'none';
-                    primaryInput.value = data.passphrase;
+                if (!Number.isInteger(count) || count < 1 || count > 10) {
+                    throw new Error('Invalid batch count');
                 }
 
-                if (data.entropy_bits) {
-                    document.getElementById('genEntropyVal').value = `${data.entropy_bits} bits`;
-                }
+                const wordPool = await loadWordlist(wordlist);
+                const passphrases = Array.from(
+                    { length: count },
+                    () => generateLocalPassphrase(
+                        wordPool,
+                        wordCount,
+                        separator
+                    )
+                );
 
+                renderPassphrases(passphrases);
+
+                const entropy = calculateGenerationEntropy(
+                    wordCount,
+                    wordlist,
+                    separator
+                );
+                document.getElementById('genEntropyVal').value =
+                    `${entropy.toFixed(1)} bits`;
             } catch (err) {
                 console.error('Failed to generate passphrase', err);
+                document.getElementById('passphraseOutput').value =
+                    'Generation unavailable';
+            } finally {
+                generateButton.disabled = false;
             }
         });
 
