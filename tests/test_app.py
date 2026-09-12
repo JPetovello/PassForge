@@ -576,21 +576,21 @@ def test_footer_matches_passforge_branding(client):
 def test_resolve_redis_url_honors_database(monkeypatch):
     """Verify host/port Redis configuration honors REDIS_DB."""
     monkeypatch.delenv("REDIS_URL", raising=False)
-    monkeypatch.setenv("REDIS_HOST", "192.168.1.50")
+    monkeypatch.setenv("REDIS_HOST", "192.0.2.10")
     monkeypatch.setenv("REDIS_PORT", "6379")
     monkeypatch.setenv("REDIS_PASSWORD", "secret")
     monkeypatch.setenv("REDIS_DB", "3")
 
     assert (
         app_module.resolve_redis_url()
-        == "redis://:secret@192.168.1.50:6379/3"
+        == "redis://:secret@192.0.2.10:6379/3"
     )
 
 
 def test_resolve_redis_url_explicit_url_takes_precedence(monkeypatch):
     """Verify REDIS_URL overrides host, port, password, and database settings."""
     monkeypatch.setenv("REDIS_URL", "redis://redis.example:6380/7")
-    monkeypatch.setenv("REDIS_HOST", "192.168.1.50")
+    monkeypatch.setenv("REDIS_HOST", "192.0.2.10")
     monkeypatch.setenv("REDIS_PORT", "6379")
     monkeypatch.setenv("REDIS_PASSWORD", "secret")
     monkeypatch.setenv("REDIS_DB", "3")

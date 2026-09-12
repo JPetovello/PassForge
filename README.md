@@ -16,15 +16,15 @@ A lightweight, secure web application for evaluating password strength, calculat
 
 ### Unraid (Community Applications)
 
-Search for PassForge in the Unraid Community Applications tab and install it directly using the official template.
+PassForge is intended for distribution through Unraid Community Applications. Until the Community Applications template is published, installation is not yet available through CA.
 
 ## Environment Variables
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `PORT` | `5000` | Port the internal Gunicorn / Flask web server listens on. |
-| `REDIS_URL` | *(blank)* | Full Redis connection URI (e.g., `redis://:secret@192.168.1.50:6379/0`). Overrides individual host/port variables when populated. |
-| `REDIS_HOST` | `localhost` | Redis host or IP address. Used when `REDIS_URL` is empty or omitted. |
+| `REDIS_URL` | *(blank)* | Full Redis connection URI (e.g., `redis://:secret@192.0.2.10:6379/0`). Overrides individual host/port variables when populated. |
+| `REDIS_HOST` | *(blank)* | Redis host or IP address. Used when `REDIS_URL` is empty or omitted. |
 | `REDIS_PORT` | `6379` | Redis port number. Used when `REDIS_URL` is empty or omitted. |
 | `REDIS_PASSWORD` | *(blank)* | Optional Redis authentication password (for host/port configuration). |
 | `REDIS_DB` | `0` | Redis database index. |
@@ -35,7 +35,7 @@ The application establishes its cache and rate-limiting store using a tiered fal
 
 1. **Explicit URL (`REDIS_URL`)**: Checked first. If present and non-empty, the app connects directly via this URI.
 2. **Host & Port Fallback (`REDIS_HOST` / `REDIS_PORT`)**: If `REDIS_URL` is an empty string (`""`) or unset, the app builds a connection string formatted as `redis://:[PASSWORD]@[HOST]:[PORT]/[DB]`.
-3. **In-Memory Emergency Fallback (`memory://`)**: If Redis is completely unavailable or unconfigured, Flask-Limiter gracefully degrades to in-memory tracking so the web application remains fully operational.
+3. **In-Memory Mode (`memory://`)**: If no Redis URL or host is configured, PassForge uses in-memory rate-limit storage. If Redis is explicitly configured but unavailable, PassForge does not automatically fall back to in-memory storage.
 
 ## License
 
