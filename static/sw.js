@@ -4,8 +4,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll([
-        '/',
-        '/static/favicon.ico'
+        '/'
       ]);
     })
   );
@@ -26,8 +25,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API requests. Password checks and generated
-  // passphrases must always reach the running PassForge instance.
+  // Never cache API requests. Plaintext passwords and generated
+  // passphrases remain browser-side; password breach checks disclose
+  // only the five-character HIBP SHA-1 prefix.
   if (url.pathname.startsWith('/api/')) {
     return;
   }
