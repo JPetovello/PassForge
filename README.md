@@ -10,7 +10,7 @@ A lightweight, secure web application for evaluating password strength, calculat
 * **Secure Passphrase Generator:** Generates memorable, high-entropy passphrases using the EFF Large Wordlist with custom separators and batch options.
 * **Progressive Web App (PWA) Support:** Installable directly to mobile or desktop home screens with offline static asset caching via service worker.
 * **Dark Mode & System Theme Sync:** Automatically detects system color preferences with manual toggle override and `localStorage` persistence.
-* **Privacy-First:** No passwords ever leave your instance unhashed.
+* **Privacy-First:** Passwords are analyzed by your PassForge instance. For HIBP breach checks, PassForge hashes the password locally and sends only the first 5 characters of the SHA-1 hash to Have I Been Pwned; the plaintext password is never sent to HIBP.
 
 ## Installation
 
