@@ -389,6 +389,7 @@
                 autocapitalize="off"
                 spellcheck="false"
             >
+            <button type="button" id="analyzeBtn">Analyze password</button>
             
             <div class="grid">
                 <div class="metric-box">
@@ -809,17 +810,16 @@
             if (val) copyText(val, document.getElementById('copyBtn'));
         });
 
-        function debounce(func, delay = 300) {
-            let timeout;
-            return (...args) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func(...args), delay);
-            };
-        }
+        let evaluationRequestId = 0;
 
-        document.getElementById('passwordInput').addEventListener('input', debounce((e) => {
-            evaluatePassword(e.target.value);
-        }, 300));
+        document.getElementById('passwordInput').addEventListener('input', (e) => {
+            evaluatePassword('');
+            document.getElementById('lengthVal').innerText = e.target.value.length + ' chars';
+        });
+
+        document.getElementById('analyzeBtn').addEventListener('click', () => {
+            evaluatePassword(document.getElementById('passwordInput').value);
+        });
 
         const meterColors = [
             'var(--meter-0)',
@@ -832,10 +832,12 @@
         const meterWidths = ['15%', '35%', '55%', '80%', '100%'];
 
         async function evaluatePassword(password) {
+            const requestId = ++evaluationRequestId;
             const meterBar = document.getElementById('meterBar');
             document.getElementById('lengthVal').innerText = password.length + ' chars';
             
-            if (!password) {
+            // Clear previous results before every evaluation or input change.
+            {
                 clearRateLimitError();
                 document.getElementById('scoreVal').innerText = '- / 4';
                 document.getElementById('scoreVal').style.color = 'var(--text-primary)';
@@ -852,8 +854,8 @@
                 document.getElementById('matrixOfflineFast').innerText = '-';
                 
                 meterBar.style.width = '0%';
-                return;
             }
+            if (!password) return;
 
             try {
                 const response = await fetch('/api/evaluate', {
@@ -862,15 +864,16 @@
                     body: JSON.stringify({ password: password })
                 });
 
+                const data = await response.json();
+                if (requestId !== evaluationRequestId) return;
+
                 if (response.status === 429) {
-                    const data = await response.json();
                     showRateLimitError(data.message);
                     return;
                 }
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 clearRateLimitError();
-                const data = await response.json();
                 const score = (data.score !== undefined && data.score >= 0 && data.score <= 4) ? data.score : 0;
                 
                 document.getElementById('scoreVal').innerText = score + ' / 4';
@@ -908,6 +911,8 @@
                     }
                 }
             } catch (err) {
+                if (requestId !== evaluationRequestId) return;
+                document.getElementById('hibpVal').innerText = 'Evaluation unavailable';
                 console.error('Evaluation error', err);
             }
         }
