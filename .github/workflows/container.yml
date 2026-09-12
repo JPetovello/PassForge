@@ -41,9 +41,56 @@ jobs:
           REDIS_URL: memory://
         run: python -m pytest -q
 
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install Bandit
+        run: python -m pip install bandit==1.9.4
+
+      - name: Run Bandit
+        run: >
+          bandit -r .
+          -c bandit.yaml
+          -x ./.venv,./tests,./.pytest_cache,./__pycache__
+
+      - name: Scan repository with Trivy
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          format: table
+
+      - name: Build image for security scan
+        run: docker build --tag passforge-security:${{ github.sha }} .
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: passforge-security:${{ github.sha }}
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          format: table
+
   publish:
     name: Build and Publish
-    needs: test
+    needs:
+      - test
+      - security
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
