@@ -388,6 +388,7 @@
                 autocorrect="off"
                 autocapitalize="off"
                 spellcheck="false"
+                maxlength="256"
             >
             <button type="button" id="analyzeBtn">Analyze password</button>
             
@@ -400,7 +401,7 @@
                     </div>
                 </div>
                 <div class="metric-box">
-                    <div class="metric-title">Entropy</div>
+                    <div class="metric-title">Estimated Guess Entropy</div>
                     <div class="metric-value" id="entropyVal" aria-live="polite">0 bits</div>
                 </div>
                 <div class="metric-box">
@@ -578,6 +579,8 @@
         }
     </script>
 
+    <script src="{{ url_for('static', filename='vendor/zxcvbn-4.4.2.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js-sha1-0.7.0.min.js') }}"></script>
     <script>
         const toggleBtn = document.getElementById('theme-toggle');
         const themeIcon = document.getElementById('theme-icon');
@@ -831,6 +834,23 @@
 
         const meterWidths = ['15%', '35%', '55%', '80%', '100%'];
 
+        function capitalizeTime(value) {
+            if (!value) return '-';
+            return value.charAt(0).toUpperCase() + value.slice(1);
+        }
+
+        function findHibpCount(rangeText, suffix) {
+            for (const line of rangeText.split(/\r?\n/)) {
+                const separatorIndex = line.indexOf(':');
+                if (separatorIndex === -1) continue;
+                const candidate = line.slice(0, separatorIndex).trim().toUpperCase();
+                if (candidate !== suffix) continue;
+                const count = Number.parseInt(line.slice(separatorIndex + 1), 10);
+                return Number.isFinite(count) ? count : 0;
+            }
+            return 0;
+        }
+
         async function evaluatePassword(password) {
             const requestId = ++evaluationRequestId;
             const meterBar = document.getElementById('meterBar');
@@ -858,61 +878,63 @@
             if (!password) return;
 
             try {
-                const response = await fetch('/api/evaluate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: password })
-                });
+                const results = zxcvbn(password);
+                const score = (results.score >= 0 && results.score <= 4) ? results.score : 0;
+                const guessEntropy = Math.log2(Math.max(1, results.guesses || 1));
 
-                const data = await response.json();
-                if (requestId !== evaluationRequestId) return;
-
-                if (response.status === 429) {
-                    showRateLimitError(data.message);
-                    return;
-                }
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                clearRateLimitError();
-                const score = (data.score !== undefined && data.score >= 0 && data.score <= 4) ? data.score : 0;
-                
                 document.getElementById('scoreVal').innerText = score + ' / 4';
                 document.getElementById('scoreVal').style.color = meterColors[score];
-
                 meterBar.style.width = meterWidths[score];
                 meterBar.style.backgroundColor = meterColors[score];
+                document.getElementById('entropyVal').innerText = Math.round(guessEntropy) + ' bits';
 
-                document.getElementById('entropyVal').innerText = (data.entropy !== undefined ? Math.round(data.entropy) : 0) + ' bits';
-                
-                const onlineThrottled = data.crack_times_display?.online_throttling_100_per_hour || '-';
-                const onlineUnthrottled = data.crack_times_display?.online_no_throttling_10_per_second || '-';
-                const slowHash = data.crack_times_display?.offline_slow_hashing_1e4_per_second || '-';
-                const fastHash = data.crack_times_display?.offline_fast_hashing_1e10_per_second || '-';
+                const crackTimes = results.crack_times_display || {};
+                const onlineThrottled = capitalizeTime(crackTimes.online_throttling_100_per_hour);
+                const onlineUnthrottled = capitalizeTime(crackTimes.online_no_throttling_10_per_second);
+                const slowHash = capitalizeTime(crackTimes.offline_slow_hashing_1e4_per_second);
+                const fastHash = capitalizeTime(crackTimes.offline_fast_hashing_1e10_per_second);
 
                 document.getElementById('onlineVal').innerText = onlineThrottled;
                 document.getElementById('fastHashVal').innerText = fastHash;
                 document.getElementById('slowHashVal').innerText = slowHash;
-
                 document.getElementById('matrixOnlineThrottled').innerText = onlineThrottled;
                 document.getElementById('matrixOnlineUnthrottled').innerText = onlineUnthrottled;
                 document.getElementById('matrixOfflineSlow').innerText = slowHash;
                 document.getElementById('matrixOfflineFast').innerText = fastHash;
-                
-                if (data.hibp) {
-                    if (data.hibp.available === false) {
-                        document.getElementById('hibpVal').innerText = 'HIBP check unavailable';
-                        document.getElementById('hibpVal').style.color = 'var(--text-primary)';
-                    } else if (data.hibp.found) {
-                        document.getElementById('hibpVal').innerText = `Found in ${data.hibp.count.toLocaleString()} breaches!`;
-                        document.getElementById('hibpVal').style.color = 'var(--color-danger)';
-                    } else {
-                        document.getElementById('hibpVal').innerText = 'No breaches found';
-                        document.getElementById('hibpVal').style.color = 'var(--color-success)';
-                    }
+                document.getElementById('hibpVal').innerText = 'Checking…';
+
+                const passwordHash = sha1(password).toUpperCase();
+                const prefix = passwordHash.slice(0, 5);
+                const suffix = passwordHash.slice(5);
+                const response = await fetch(`/api/hibp/${prefix}`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'text/plain' },
+                    cache: 'no-store'
+                });
+                if (requestId !== evaluationRequestId) return;
+
+                if (response.status === 429) {
+                    const data = await response.json();
+                    showRateLimitError(data.message);
+                    document.getElementById('hibpVal').innerText = 'HIBP check rate limited';
+                    return;
+                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const rangeText = await response.text();
+                if (requestId !== evaluationRequestId) return;
+                clearRateLimitError();
+                const pwnedCount = findHibpCount(rangeText, suffix);
+                if (pwnedCount > 0) {
+                    document.getElementById('hibpVal').innerText = `Found in ${pwnedCount.toLocaleString()} breaches!`;
+                    document.getElementById('hibpVal').style.color = 'var(--color-danger)';
+                } else {
+                    document.getElementById('hibpVal').innerText = 'No breaches found';
+                    document.getElementById('hibpVal').style.color = 'var(--color-success)';
                 }
             } catch (err) {
                 if (requestId !== evaluationRequestId) return;
-                document.getElementById('hibpVal').innerText = 'Evaluation unavailable';
+                document.getElementById('hibpVal').innerText = 'HIBP check unavailable';
                 console.error('Evaluation error', err);
             }
         }
