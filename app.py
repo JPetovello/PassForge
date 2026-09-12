@@ -16,20 +16,26 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_PAYLOAD_BYTES', 1 * 1024 * 1024))
 
 # 2. Set up Rate Limiting & Redis Connection (Handles empty env vars from Docker/Unraid)
-raw_redis_url = os.environ.get("REDIS_URL", "").strip() or None
+def resolve_redis_url():
+    """Resolve Redis configuration from environment variables."""
+    raw_redis_url = os.environ.get("REDIS_URL", "").strip() or None
 
-if not raw_redis_url:
+    if raw_redis_url:
+        return raw_redis_url
+
     redis_host = os.environ.get("REDIS_HOST", "").strip()
     redis_port = os.environ.get("REDIS_PORT", "6379").strip()
     redis_password = os.environ.get("REDIS_PASSWORD", "").strip()
+    redis_db = os.environ.get("REDIS_DB", "0").strip() or "0"
 
     if redis_host:
         auth = f":{redis_password}@" if redis_password else ""
-        REDIS_URL = f"redis://{auth}{redis_host}:{redis_port}/0"
-    else:
-        REDIS_URL = "memory://"
-else:
-    REDIS_URL = raw_redis_url
+        return f"redis://{auth}{redis_host}:{redis_port}/{redis_db}"
+
+    return "memory://"
+
+
+REDIS_URL = resolve_redis_url()
 
 RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per day;50 per hour")
 
