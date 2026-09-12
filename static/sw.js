@@ -1,4 +1,4 @@
-const CACHE_NAME = 'passforge-v1';
+const CACHE_NAME = 'passforge-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -25,10 +25,23 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  // Bypass cache for API endpoints to ensure fresh checks and generation
+
+  // Never cache API requests. Password checks and generated
+  // passphrases must always reach the running PassForge instance.
   if (url.pathname.startsWith('/api/')) {
     return;
   }
+
+  // Prefer the network for page navigation so application updates
+  // are visible immediately. Fall back to the cached page offline.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
+
+  // Static assets may use the cache when available.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       return cachedResponse || fetch(event.request);

@@ -554,8 +554,24 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw.js')
-                    .then((reg) => console.log('ServiceWorker registration successful with scope: ', reg.scope))
+                navigator.serviceWorker.register('/sw.js')
+                    .then(async (reg) => {
+                        console.log('ServiceWorker registration successful with scope: ', reg.scope);
+
+                        // Remove the legacy /static/sw.js registration left by
+                        // earlier PassForge builds, if the browser still has it.
+                        const legacyReg = await navigator.serviceWorker.getRegistration('/static/');
+                        const legacyWorker = legacyReg &&
+                            (legacyReg.active || legacyReg.waiting || legacyReg.installing);
+
+                        if (
+                            legacyWorker &&
+                            new URL(legacyWorker.scriptURL).pathname === '/static/sw.js'
+                        ) {
+                            await legacyReg.unregister();
+                            console.log('Removed legacy /static/sw.js ServiceWorker registration');
+                        }
+                    })
                     .catch((err) => console.log('ServiceWorker registration failed: ', err));
             });
         }

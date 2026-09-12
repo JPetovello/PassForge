@@ -221,6 +221,16 @@ def index():
         short_wordlist_size=len(EFF_SHORT_WORDS),
     )
 
+@app.route('/sw.js')
+def service_worker():
+    static_dir = os.path.join(app.root_path, 'static')
+    return send_from_directory(
+        static_dir,
+        'sw.js',
+        mimetype='application/javascript',
+        max_age=0,
+    )
+
 @app.route('/favicon.ico')
 def favicon():
     static_dir = os.path.join(app.root_path, 'static')

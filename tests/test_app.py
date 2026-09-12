@@ -28,6 +28,11 @@ def test_static_routes(client):
     favicon_res = client.get('/favicon.ico')
     assert favicon_res.status_code in (200, 204)
 
+    sw_res = client.get('/sw.js')
+    assert sw_res.status_code == 200
+    assert sw_res.mimetype == 'application/javascript'
+    assert "passforge-v2" in sw_res.get_data(as_text=True)
+
 def test_evaluate_password_valid(client):
     """Verify password evaluation endpoint with a standard payload."""
     payload = {"password": "Correct-Horse-Battery-Staple-2026!"}
