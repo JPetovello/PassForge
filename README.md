@@ -7,7 +7,7 @@ A lightweight, secure web application for evaluating password strength, calculat
 * **Password Strength Evaluation:** Powered by zxcvbn for robust, pattern-based strength checks with detailed cracking scenario breakdowns.
 * **Breach Detection:** Checks passwords securely using the Have I Been Pwned (HIBP) API via k-Anonymity (only the first 5 characters of the SHA-1 hash are sent).
 * **Entropy Calculation:** Real-time mathematical entropy calculation based on character set size and length.
-* **Secure Passphrase Generator:** Generates memorable, high-entropy passphrases using the EFF Large Wordlist with custom separators and batch options.
+* **Secure Passphrase Generator:** Generates memorable, high-entropy passphrases using the EFF Large and Short Wordlists with custom separators and batch options.
 * **Progressive Web App (PWA) Support:** Installable directly to mobile or desktop home screens with offline static asset caching via service worker.
 * **Dark Mode & System Theme Sync:** Automatically detects system color preferences with manual toggle override and `localStorage` persistence.
 * **Privacy-First:** Passwords are analyzed by your PassForge instance. For HIBP breach checks, PassForge hashes the password locally and sends only the first 5 characters of the SHA-1 hash to Have I Been Pwned; the plaintext password is never sent to HIBP.
@@ -16,7 +16,7 @@ A lightweight, secure web application for evaluating password strength, calculat
 
 ### Unraid (Community Applications)
 
-PassForge is intended for distribution through Unraid Community Applications. Until the Community Applications template is published, installation is not yet available through CA.
+PassForge is available through Unraid Community Applications. Search for **PassForge** in the Unraid Apps tab to install it.
 
 ## Environment Variables
 
