@@ -1,14 +1,11 @@
 import os
 import re
-import secrets
 import hashlib
-import math
 import requests
 import redis
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import zxcvbn
 
 app = Flask(__name__)
 
@@ -189,42 +186,6 @@ def fetch_hibp_range(prefix):
         return None
 
 
-def check_hibp_by_prefix(prefix, suffix):
-    """Check HIBP via k-Anonymity using pre-computed prefix and suffix."""
-    if not re.fullmatch(r'^[0-9A-F]{5}$', prefix) or not re.fullmatch(r'^[0-9A-F]{35}$', suffix):
-        return 0
-
-    range_text = fetch_hibp_range(prefix)
-    if range_text is None:
-        return None
-
-    for line in range_text.splitlines():
-        if ':' in line:
-            h, count = line.split(':', 1)
-            if h.strip() == suffix:
-                return int(count)
-
-    return 0
-
-def check_hibp(password):
-    """Check password leak count via Have I Been Pwned API using k-Anonymity."""
-    sha1_password = hashlib.sha1(password.encode('utf-8'), usedforsecurity=False).hexdigest().upper()
-    prefix = sha1_password[:5]
-    suffix = sha1_password[5:]
-    return check_hibp_by_prefix(prefix, suffix)
-
-def calculate_entropy(password):
-    charset_size = 0
-    if any(c.islower() for c in password): charset_size += 26
-    if any(c.isupper() for c in password): charset_size += 26
-    if any(c.isdigit() for c in password): charset_size += 10
-    if any(not c.isalnum() for c in password): charset_size += 32
-    
-    if charset_size == 0 or len(password) == 0:
-        return 0
-    
-    return round(len(password) * math.log2(charset_size))
-
 @app.route('/', methods=['GET'])
 def index():
     return render_template(
@@ -298,56 +259,6 @@ def healthcheck():
     status_code = 200 if health_status["status"] in ["healthy", "degraded"] else 500
     return jsonify(health_status), status_code
 
-@app.route('/api/evaluate', methods=['POST'])
-@limiter.limit("15 per minute")
-def evaluate_password():
-    data = request.get_json()
-    if not isinstance(data, dict):
-        return jsonify({'error': 'Request body must be a JSON object'}), 400
-    
-    sha1_prefix = sanitize_input(data.get('sha1_prefix', '')).upper()
-    sha1_suffix = sanitize_input(data.get('sha1_suffix', '')).upper()
-
-    raw_password = data.get('password', '')
-    password = raw_password if isinstance(raw_password, str) else ''
-
-    if not password and not (sha1_prefix and sha1_suffix):
-        return jsonify({'error': 'No evaluation data provided'}), 400
-
-    if not password:
-        if (
-            not re.fullmatch(r'^[0-9A-F]{5}$', sha1_prefix)
-            or not re.fullmatch(r'^[0-9A-F]{35}$', sha1_suffix)
-        ):
-            return jsonify({'error': 'Invalid SHA-1 prefix or suffix format'}), 400
-
-    if password:
-        if len(password) > 256:
-            return jsonify({'error': 'Password exceeds maximum allowed length of 256 characters'}), 400
-        results = zxcvbn.zxcvbn(password)
-        pwned_count = check_hibp(password)
-        entropy_val = calculate_entropy(password)
-    else:
-        pwned_count = check_hibp_by_prefix(sha1_prefix, sha1_suffix)
-        results = {'score': 0, 'feedback': {}, 'crack_times_display': {}}
-        entropy_val = 0
-
-    raw_crack_times = results.get('crack_times_display', {})
-    capitalized_crack_times = {k: v.title() for k, v in raw_crack_times.items()}
-
-    return jsonify({
-        'score': results.get('score', 0),
-        'entropy': entropy_val,
-        'feedback': results.get('feedback', {}),
-        'crack_times_display': capitalized_crack_times,
-        'hibp': {
-            'available': pwned_count is not None,
-            'found': pwned_count is not None and pwned_count > 0,
-            'count': pwned_count
-        }
-    })
-
-
 @app.route('/api/hibp/<prefix>', methods=['GET'])
 @limiter.limit("15 per minute")
 def hibp_range(prefix):
@@ -361,70 +272,6 @@ def hibp_range(prefix):
         return jsonify({'error': 'HIBP check unavailable'}), 503
 
     return range_text, 200, {'Content-Type': 'text/plain; charset=utf-8'}
-
-@app.route('/api/generate', methods=['GET'])
-@limiter.limit("30 per minute")
-def generate_passphrase():
-    try:
-        num_words = int(request.args.get('words', 4))
-    except (ValueError, TypeError):
-        num_words = 4
-
-    num_words = max(3, min(num_words, 10))
-
-    try:
-        batch_count = int(request.args.get('count', 1))
-    except (ValueError, TypeError):
-        batch_count = 1
-
-    batch_count = max(1, min(batch_count, 10))
-
-    list_type = request.args.get('wordlist', 'large').lower()
-
-    if list_type not in {'large', 'short'}:
-        return jsonify({'error': 'Invalid wordlist type'}), 400
-
-    if list_type == 'large' and not EFF_LARGE_WORDS:
-        return jsonify({'error': 'EFF Large wordlist is not installed'}), 503
-
-    if list_type == 'short' and not EFF_SHORT_WORDS:
-        return jsonify({'error': 'EFF Short wordlist is not installed'}), 503
-
-    word_pool = EFF_SHORT_WORDS if list_type == 'short' else EFF_LARGE_WORDS
-
-    raw_sep = request.args.get('separator', '-')
-    allowed_separators = {'-': '-', '_': '_', '.': '.', 'space': ' ', 'number': 'num'}
-
-    if raw_sep not in allowed_separators:
-        return jsonify({'error': 'Invalid separator'}), 400
-
-    separator_mode = allowed_separators[raw_sep]
-
-    bits_per_word = math.log2(len(word_pool))
-    theoretical_entropy = num_words * bits_per_word
-
-    if separator_mode == 'num':
-        theoretical_entropy += (num_words - 1) * math.log2(10)
-
-    theoretical_entropy = round(theoretical_entropy, 1)
-
-    passphrases = []
-    for _ in range(batch_count):
-        selected_words = [secrets.choice(word_pool) for _ in range(num_words)]
-        if separator_mode == 'num':
-            passphrase = "".join(f"{word}{secrets.choice('0123456789')}" for word in selected_words[:-1]) + selected_words[-1]
-        else:
-            passphrase = separator_mode.join(selected_words)
-        passphrases.append(passphrase)
-
-    return jsonify({
-        'passphrase': passphrases[0],
-        'passphrases': passphrases,
-        'count': batch_count,
-        'words': num_words,
-        'entropy_bits': theoretical_entropy,
-        'wordlist_type': list_type
-    })
 
 @app.errorhandler(400)
 def bad_request_error(error):
