@@ -55,14 +55,17 @@ jobs:
           python-version: '3.13'
           cache: pip
 
-      - name: Install Bandit
-        run: python -m pip install bandit==1.9.4
+      - name: Install security tools
+        run: python -m pip install bandit==1.9.4 pip-audit==2.10.1
 
       - name: Run Bandit
         run: >
           bandit -r .
           -c bandit.yaml
           -x ./.venv,./tests,./.pytest_cache,./__pycache__
+
+      - name: Audit Python dependencies
+        run: pip-audit -r requirements.txt
 
       - name: Scan repository with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -75,12 +78,13 @@ jobs:
           format: table
 
       - name: Build image for security scan
-        run: docker build --tag passforge-security:${{ github.sha }} .
+        run: docker build --pull --tag passforge-security:${{ github.sha }} .
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: passforge-security:${{ github.sha }}
+          vuln-type: os
           scanners: vuln,secret,misconfig
           severity: HIGH,CRITICAL
           exit-code: '1'
