@@ -264,7 +264,7 @@ def fetch_hibp_range(prefix):
             return None
         return res.text
     except Exception as e:
-        print(f"[HIBP Error] {e}")
+        print(f"[HIBP Error] Request failed ({type(e).__name__})")
         return None
 
 

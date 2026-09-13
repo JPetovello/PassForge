@@ -79,6 +79,30 @@ def test_prefix_only_endpoint_reports_hibp_failure(client, monkeypatch):
     assert response.get_json()['error'] == 'HIBP check unavailable'
 
 
+def test_hibp_exception_log_omits_prefix_and_url(client, monkeypatch, capsys):
+    prefix = 'ABCDE'
+    leaked_url = f'https://api.pwnedpasswords.com/range/{prefix}'
+
+    def failing_get(*args, **kwargs):
+        raise RuntimeError(
+            f'Synthetic connection failure for {leaked_url}'
+        )
+
+    monkeypatch.setattr(app_module.requests, 'get', failing_get)
+
+    response = client.post('/api/hibp', json={'prefix': prefix})
+
+    assert response.status_code == 503
+    assert response.get_json()['error'] == 'HIBP check unavailable'
+
+    captured = capsys.readouterr()
+    log_output = captured.out + captured.err
+
+    assert '[HIBP Error] Request failed (RuntimeError)' in log_output
+    assert prefix not in log_output
+    assert leaked_url not in log_output
+
+
 def test_prefix_bearing_legacy_route_is_removed(client, monkeypatch):
     def unexpected_request(*args, **kwargs):
         raise AssertionError('Legacy prefix-bearing route must not reach HIBP')
