@@ -444,17 +444,37 @@ Prefer updating the test so that the invariant remains covered.
 
 ## Python Dependencies
 
-Python dependency specifications currently use version ranges or minimums
-rather than a fully reproducible lockfile.
+`requirements.in` is the human-maintained list of direct application
+dependencies. `requirements.lock` is generated from it and records the exact
+transitive dependency set with acceptable SHA-256 hashes.
 
-As a result, rebuilding the virtual environment at a later date can resolve
-newer package versions.
+Application and container installs must use the lock with hash enforcement:
 
-This is a maintenance consideration when diagnosing future differences between
-development, CI, and historical builds.
+    python -m pip install --require-hashes --only-binary=:all: -r requirements.lock
 
-Do not assume that a fresh `pip install` necessarily recreates the exact
-dependency set used for an older release.
+To intentionally update or regenerate the lock:
+
+1. Update `requirements.in` deliberately.
+2. Create and activate a Python 3.13 environment. Lock generation must use
+   Python 3.13 so dependency markers match the container and CI runtime.
+3. Install the pinned lock generator outside the runtime image:
+
+       python -m pip install pip-tools==7.6.1
+
+4. Generate the lock:
+
+       python -m piptools compile --generate-hashes --resolver=backtracking --strip-extras \
+         --output-file=requirements.lock requirements.in
+
+5. Review the complete lock diff and verify that every version change was
+   intended.
+6. Run the Python, browser, dependency-audit, and container-build checks.
+
+Do not hand-edit generated package entries or hashes in `requirements.lock`.
+The Dockerfile deliberately requires binary wheels so an unexpected source
+build cannot silently reintroduce mutable compiler and Alpine build-package
+inputs. The publishing target is Linux/amd64 Alpine; verify compatible
+musllinux wheels before accepting a dependency update.
 
 ## Release and CI Considerations
 
