@@ -371,15 +371,26 @@ boundary.
 
 ## Reverse Proxies
 
-Rate limiting currently derives client identity from the request address.
+Rate limiting derives client identity from the direct request address by
+default. In this mode PassForge ignores `X-Forwarded-For`, `Forwarded`, and
+`X-Real-IP`, so a direct client cannot rotate those headers to evade its rate
+limit.
 
-That behavior is not automatically proxy-aware.
+Proxy awareness is opt-in through `TRUSTED_PROXY_HOPS`, which accepts an integer
+from 0 through 10 and defaults to 0. Set it to the exact number of trusted
+reverse proxies between the client and PassForge. The limiter uses the IP at
+that right-hand boundary in `X-Forwarded-For`; entries farther left remain
+untrusted. Every value in the trusted segment must be a valid IPv4 or IPv6
+address. A missing, short, or malformed header safely falls back to the direct
+peer address.
 
-Deployments behind reverse proxies should not assume that forwarded client IP
-headers will automatically produce per-client rate limits.
+Only enable this setting when network controls prevent direct access to
+PassForge and every configured proxy appends its direct peer address to
+`X-Forwarded-For`. Otherwise a client that bypasses the trusted proxy chain can
+spoof its limiter identity. `Forwarded` and `X-Real-IP` are not used.
 
-Any future proxy-awareness change must validate trusted proxy boundaries rather
-than blindly accepting `X-Forwarded-For`.
+Malformed or out-of-range `TRUSTED_PROXY_HOPS` values stop application startup
+instead of silently changing the trust boundary.
 
 ## Testing
 

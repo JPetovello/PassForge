@@ -1,6 +1,7 @@
 import os
 import re
 import hashlib
+import ipaddress
 import requests
 import redis
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -35,9 +36,59 @@ def resolve_redis_url():
 REDIS_URL = resolve_redis_url()
 
 RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per day;50 per hour")
+MAX_TRUSTED_PROXY_HOPS = 10
+
+
+def resolve_trusted_proxy_hops():
+    """Return the explicitly configured number of trusted reverse proxies."""
+    raw_value = os.environ.get("TRUSTED_PROXY_HOPS", "0").strip()
+
+    try:
+        trusted_hops = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(
+            "TRUSTED_PROXY_HOPS must be an integer from 0 through "
+            f"{MAX_TRUSTED_PROXY_HOPS}."
+        ) from exc
+
+    if not 0 <= trusted_hops <= MAX_TRUSTED_PROXY_HOPS:
+        raise ValueError(
+            "TRUSTED_PROXY_HOPS must be an integer from 0 through "
+            f"{MAX_TRUSTED_PROXY_HOPS}."
+        )
+
+    return trusted_hops
+
+
+TRUSTED_PROXY_HOPS = resolve_trusted_proxy_hops()
+
+
+def get_rate_limit_client_address():
+    """Resolve a limiter key without implicitly trusting forwarding headers."""
+    direct_address = get_remote_address()
+
+    if TRUSTED_PROXY_HOPS == 0:
+        return direct_address
+
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    forwarded_chain = [item.strip() for item in forwarded_for.split(",")]
+
+    if len(forwarded_chain) < TRUSTED_PROXY_HOPS:
+        return direct_address
+
+    trusted_segment = forwarded_chain[-TRUSTED_PROXY_HOPS:]
+    try:
+        normalized_segment = [
+            str(ipaddress.ip_address(address))
+            for address in trusted_segment
+        ]
+    except ValueError:
+        return direct_address
+
+    return normalized_segment[0]
 
 limiter = Limiter(
-    get_remote_address,
+    get_rate_limit_client_address,
     app=app,
     default_limits=[RATELIMIT_DEFAULT],
     storage_uri=REDIS_URL

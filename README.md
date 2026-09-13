@@ -43,6 +43,7 @@ PassForge is available through Unraid Community Applications. Search for **PassF
 | `REDIS_PORT` | `6379` | Redis port number. Used when `REDIS_URL` is empty or omitted. |
 | `REDIS_PASSWORD` | *(blank)* | Optional Redis authentication password (for host/port configuration). |
 | `REDIS_DB` | `0` | Redis database index. |
+| `TRUSTED_PROXY_HOPS` | `0` | Number of trusted reverse-proxy hops in `X-Forwarded-For` (0–10). Leave at `0` for direct deployments. |
 
 ### Redis Connection Resolution Logic
 
@@ -51,6 +52,23 @@ The application establishes its cache and rate-limiting store using a tiered fal
 1. **Explicit URL (`REDIS_URL`)**: Checked first. If present and non-empty, the app connects directly via this URI.
 2. **Host & Port Fallback (`REDIS_HOST` / `REDIS_PORT`)**: If `REDIS_URL` is an empty string (`""`) or unset, the app builds a connection string formatted as `redis://:[PASSWORD]@[HOST]:[PORT]/[DB]`.
 3. **In-Memory Mode (`memory://`)**: If no Redis URL or host is configured, PassForge uses in-memory rate-limit storage. If Redis is explicitly configured but unavailable, PassForge does not automatically fall back to in-memory storage.
+
+In-memory rate-limit counters are local to each Gunicorn worker. Configure Redis
+when limits must be shared across workers or application instances.
+
+### Reverse Proxy Client Addresses
+
+PassForge uses the direct network peer for rate limiting by default and ignores
+`X-Forwarded-For`, `Forwarded`, and `X-Real-IP`. When PassForge is reachable
+only through a known reverse-proxy chain, set `TRUSTED_PROXY_HOPS` to the exact
+number of trusted proxies (maximum 10). PassForge then selects the client IP at
+that right-hand boundary from `X-Forwarded-For`; entries farther to the left do
+not affect the limiter key.
+
+Do not enable proxy trust if clients can connect directly to PassForge. The
+reverse proxy must append each peer address to `X-Forwarded-For`, and network
+controls must prevent clients from bypassing the configured trusted proxies.
+Invalid `TRUSTED_PROXY_HOPS` values prevent the application from starting.
 
 ## License
 
