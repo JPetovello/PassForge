@@ -259,11 +259,19 @@ def healthcheck():
     status_code = 200 if health_status["status"] in ["healthy", "degraded"] else 500
     return jsonify(health_status), status_code
 
-@app.route('/api/hibp/<prefix>', methods=['GET'])
+@app.route('/api/hibp', methods=['POST'])
 @limiter.limit("15 per minute")
-def hibp_range(prefix):
+def hibp_range():
     """Proxy a padded HIBP range lookup without receiving a password or full hash."""
-    normalized_prefix = sanitize_input(prefix).upper()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) != {'prefix'}:
+        return jsonify({'error': 'Invalid SHA-1 prefix format'}), 400
+
+    prefix = payload.get('prefix')
+    if not isinstance(prefix, str):
+        return jsonify({'error': 'Invalid SHA-1 prefix format'}), 400
+
+    normalized_prefix = prefix.upper()
     if not re.fullmatch(r'^[0-9A-F]{5}$', normalized_prefix):
         return jsonify({'error': 'Invalid SHA-1 prefix format'}), 400
 

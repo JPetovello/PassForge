@@ -1020,9 +1020,13 @@
                 const passwordHash = sha1(password).toUpperCase();
                 const prefix = passwordHash.slice(0, 5);
                 const suffix = passwordHash.slice(5);
-                const response = await fetch(`/api/hibp/${prefix}`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'text/plain' },
+                const response = await fetch('/api/hibp', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'text/plain',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prefix }),
                     cache: 'no-store'
                 });
                 if (requestId !== evaluationRequestId) return;

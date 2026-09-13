@@ -76,7 +76,8 @@ The expected sequence is:
 4. Browser-side SHA-1 produces the password hash.
 5. The browser separates the first five hexadecimal characters from the
    remaining SHA-1 suffix.
-6. Only the five-character prefix is requested through `/api/hibp/<prefix>`.
+6. Only the five-character prefix is sent in a JSON body to `POST /api/hibp`,
+   keeping it out of the application request path and normal access logs.
 7. PassForge requests the corresponding HIBP range response.
 8. The browser compares the full suffix locally.
 9. The plaintext password and full SHA-1 hash never leave the browser.
@@ -98,9 +99,9 @@ The returned range is processed by the browser, which performs the final suffix
 match locally.
 
 Although the plaintext password is not transmitted, the five-character prefix
-is visible to the PassForge server because it forms part of the request URL.
-Server, reverse-proxy, or access logging should therefore be considered when
-deploying PassForge.
+is visible to the PassForge server in the HIBP request body. It is deliberately
+kept out of the request URL so normal access logs do not record it. Application
+and reverse-proxy configurations must not log API request bodies.
 
 HTTPS is also important. The application's privacy guarantees depend on the
 browser receiving the intended JavaScript without modification.

@@ -26,11 +26,16 @@ def test_obsolete_sensitive_endpoints_are_removed(client, method, path):
 
 
 @pytest.mark.parametrize('path', [
-    '/api/hibp/ABCDE',
     '/api/not-a-route',
 ])
 def test_api_responses_are_not_stored(client, path):
     response = client.get(path)
+    assert response.headers['Cache-Control'] == 'no-store'
+
+
+def test_hibp_post_response_is_not_stored(client):
+    response = client.post('/api/hibp', json={'prefix': 'ABCDE'})
+    assert response.status_code == 200
     assert response.headers['Cache-Control'] == 'no-store'
 
 

@@ -57,7 +57,7 @@ const response = body => ({
     json: async () => ({}),
 });
 
-test('Typing sends no request; Analyze sends only a five-character prefix', () => {
+test('Typing sends no request; Analyze posts only a five-character prefix', () => {
     const { calls, element } = setup();
     const input = element('passwordInput');
 
@@ -67,10 +67,12 @@ test('Typing sends no request; Analyze sends only a five-character prefix', () =
 
     element('analyzeBtn').events.click();
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, '/api/hibp/12345');
-    assert.equal(calls[0].options.method, 'GET');
-    assert.equal('body' in calls[0].options, false);
+    assert.equal(calls[0].url, '/api/hibp');
+    assert.equal(calls[0].options.method, 'POST');
+    assert.equal(calls[0].options.headers['Content-Type'], 'application/json');
+    assert.equal(calls[0].options.body, JSON.stringify({ prefix: '12345' }));
     assert.equal(JSON.stringify(calls[0]).includes(input.value), false);
+    assert.equal(JSON.stringify(calls[0]).includes('B'.repeat(35)), false);
 
     calls[0].resolve(response(''));
 });
