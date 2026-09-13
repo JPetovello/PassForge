@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <script>
+    <script nonce="{{ csp_nonce }}">
         (function() {
             const savedTheme = localStorage.getItem('passforge-theme');
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -24,7 +24,7 @@
         })();
     </script>
 
-    <style>
+    <style nonce="{{ csp_nonce }}">
         /* Light Mode */
         :root {
             --bg-body: #f1f5f9;
@@ -553,7 +553,7 @@
     </div>
 
     <!-- Service Worker Registration -->
-    <script>
+    <script nonce="{{ csp_nonce }}">
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
@@ -581,7 +581,7 @@
 
     <script src="{{ url_for('static', filename='vendor/zxcvbn-4.4.2.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/js-sha1-0.7.0.min.js') }}"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         const toggleBtn = document.getElementById('theme-toggle');
         const themeIcon = document.getElementById('theme-icon');
         const themeText = document.getElementById('theme-text');

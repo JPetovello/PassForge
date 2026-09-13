@@ -2,9 +2,10 @@ import os
 import re
 import hashlib
 import ipaddress
+import secrets
 import requests
 import redis
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, g, render_template, request, jsonify, send_from_directory
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -208,6 +209,13 @@ def sanitize_input(user_input: str) -> str:
     sanitized = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', user_input)
     return sanitized.strip()
 
+
+@app.before_request
+def create_csp_nonce():
+    """Create a fresh nonce for this response's permitted inline assets."""
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
 @app.after_request
 def apply_security_headers(response):
     """Attach standard production security headers to all responses."""
@@ -216,7 +224,20 @@ def apply_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';"
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "base-uri 'none'; "
+        "connect-src 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none'; "
+        f"script-src 'self' 'nonce-{g.csp_nonce}'; "
+        "script-src-attr 'none'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "style-src-attr 'unsafe-inline'; "
+        f"style-src-elem 'self' 'nonce-{g.csp_nonce}'; "
+        "worker-src 'self'"
+    )
     return response
 
 def fetch_hibp_range(prefix):
@@ -241,6 +262,7 @@ def fetch_hibp_range(prefix):
 def index():
     return render_template(
         'index.html',
+        csp_nonce=g.csp_nonce,
         large_wordlist_size=len(EFF_LARGE_WORDS),
         short_wordlist_size=len(EFF_SHORT_WORDS),
     )

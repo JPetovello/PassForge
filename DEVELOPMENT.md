@@ -345,6 +345,23 @@ The Flask application applies security headers including protections such as:
 Changes to templates, JavaScript, fonts, images, or other resources may require
 corresponding CSP review.
 
+Each response receives a cryptographically random CSP nonce. Every inline
+`script` and `style` element in the main template must carry that nonce. Inline
+scripts are not permitted through `unsafe-inline`.
+
+The current UI still uses inline `style` attributes and JavaScript
+`element.style` assignments for presentation state. The policy therefore keeps
+`style-src 'unsafe-inline'` as a compatibility fallback and explicitly permits
+style attributes. Browsers that support CSP Level 3 restrict `style` elements
+to same-origin styles or the response nonce through `style-src-elem`. Removing
+the remaining style allowance requires replacing every inline style attribute
+and dynamic style assignment with stylesheet classes and testing the complete
+UI across the supported browsers.
+
+Browser connections are restricted to same-origin resources. HIBP communication
+from the browser still goes through same-origin `POST /api/hibp`; only the
+backend contacts the external HIBP service.
+
 Avoid weakening CSP simply to make a new dependency easier to load.
 
 In particular, think carefully before:
