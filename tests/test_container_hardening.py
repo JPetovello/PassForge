@@ -13,6 +13,22 @@ def test_container_preserves_non_root_runtime_identity():
     assert "USER root" not in DOCKERFILE
 
 
+def test_security_hotfix_package_is_checksum_pinned_and_installed_offline():
+    assert (
+        "ADD --checksum=sha256:"
+        "8306e5bb577696c9069fe1dfd9e1dcc39d2d481c6a1b0e707fd03c3e21aa6aa2"
+        in DOCKERFILE
+    )
+    assert (
+        "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/"
+        "libuuid-2.42.3-r1.apk"
+        in DOCKERFILE
+    )
+    assert "apk add --no-cache --no-network /tmp/libuuid.apk" in DOCKERFILE
+    assert "apk upgrade" not in DOCKERFILE
+    assert "apk update" not in DOCKERFILE
+
+
 def test_application_tree_is_not_owned_or_writable_by_runtime_user():
     assert "COPY --chown=0:0 requirements.lock ." in DOCKERFILE
     assert "COPY --chown=0:0 . ." in DOCKERFILE

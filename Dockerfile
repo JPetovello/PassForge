@@ -1,5 +1,14 @@
 FROM python:3.13-alpine@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a
 
+# Security-fix libuuid without mutable Alpine repository resolution.
+# The exact package bytes are checksum-pinned and installed offline.
+ADD --checksum=sha256:8306e5bb577696c9069fe1dfd9e1dcc39d2d481c6a1b0e707fd03c3e21aa6aa2 \
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libuuid-2.42.3-r1.apk \
+    /tmp/libuuid.apk
+
+RUN apk add --no-cache --no-network /tmp/libuuid.apk && \
+    rm -f /tmp/libuuid.apk
+
 WORKDIR /app
 
 COPY --chown=0:0 requirements.lock .

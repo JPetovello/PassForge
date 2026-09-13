@@ -272,6 +272,14 @@ static assets, wordlists, and configuration without being able to alter them.
 PassForge does not persist application data and does not require `/app/data` or
 another writable application directory.
 
+The base image remains pinned to an immutable digest. If an OS security fix is
+available before the upstream Python base-image digest is refreshed, do not
+restore mutable `apk update` or `apk upgrade` behavior. A required Alpine
+package may instead be fetched at an exact versioned URL with Docker
+`ADD --checksum` pinning its exact bytes, then installed from that local file
+with `apk add --no-cache --no-network`. The current image uses this pattern for
+`libuuid 2.42.3-r1`.
+
 Python bytecode generation is disabled in the image. PassForge does not use
 Gunicorn's local runtime-management socket, so it is disabled. Gunicorn still
 uses an unlinked temporary file for worker heartbeat state, while `HOME` and
