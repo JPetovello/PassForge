@@ -7,6 +7,9 @@ worker_class = "gthread"
 timeout = 30
 keepalive = 2
 
+# PassForge does not use Gunicorn's local runtime-management socket.
+control_socket_disable = True
+
 # Access and error logging
 accesslog = "-"
 errorlog = "-"

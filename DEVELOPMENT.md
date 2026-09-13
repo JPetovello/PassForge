@@ -263,6 +263,40 @@ Gunicorn can honor a configurable application port, so changing the runtime
 port without coordinating the Docker health check can cause an otherwise
 working container to be reported unhealthy.
 
+## Container Runtime Filesystem and Privileges
+
+The production image preserves the established non-root runtime identity
+`99:100`. Files copied into `/app` remain root-owned and have group/other write
+permissions removed, so the application process can read source, templates,
+static assets, wordlists, and configuration without being able to alter them.
+PassForge does not persist application data and does not require `/app/data` or
+another writable application directory.
+
+Python bytecode generation is disabled in the image. PassForge does not use
+Gunicorn's local runtime-management socket, so it is disabled. Gunicorn still
+uses an unlinked temporary file for worker heartbeat state, while `HOME` and
+`TMPDIR` both point to `/tmp`. Therefore a hardened deployment can use a
+read-only root filesystem with only an ephemeral `/tmp` tmpfs:
+
+    --read-only
+    --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+
+PassForge binds to an unprivileged port and uses ordinary network connections;
+it does not require Linux capabilities or privilege escalation. Deployments
+should also apply:
+
+    --cap-drop=ALL
+    --security-opt=no-new-privileges:true
+
+These are container-runtime controls and cannot be enforced by the Dockerfile.
+For Unraid, supply equivalent extra parameters in the container template or
+runtime configuration. Do not mount writable storage over `/app`. Redis is an
+optional external service and does not create a local persistence requirement.
+
+If future functionality introduces file writes, identify and mount only the
+specific required path rather than making the image root or `/app` writable.
+Re-run the container smoke tests under the restrictions above before release.
+
 ## Service Worker and PWA Behavior
 
 The service worker lives at `static/sw.js`.

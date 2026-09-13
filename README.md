@@ -70,6 +70,32 @@ reverse proxy must append each peer address to `X-Forwarded-For`, and network
 controls must prevent clients from bypassing the configured trusted proxies.
 Invalid `TRUSTED_PROXY_HOPS` values prevent the application from starting.
 
+### Container Runtime Hardening
+
+The image runs as the established non-root UID/GID `99:100`. Application code,
+templates, static assets, wordlists, and configuration under `/app` are owned by
+root and are not writable by that runtime identity. PassForge has no persistent
+application-data directory. Its only runtime-writable requirement is temporary
+space under `/tmp`, which is also used as its home and Python temporary
+directory.
+
+Docker and Unraid runtime settings control filesystem and kernel restrictions;
+an image cannot enforce them on its own. When the surrounding deployment
+supports these options, run PassForge with:
+
+```text
+--read-only
+--tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+--cap-drop=ALL
+--security-opt=no-new-privileges:true
+```
+
+These settings leave the image root filesystem read-only, provide only an
+ephemeral writable `/tmp`, drop all Linux capabilities, and prevent gaining new
+privileges. Do not add a writable mount over `/app`; doing so would make served
+application code or assets mutable by the container. Redis remains an external,
+optional service and does not require a container filesystem mount.
+
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0 - see the LICENSE file for details.
