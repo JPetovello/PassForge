@@ -1,3 +1,4 @@
+import re
 import runpy
 from pathlib import Path
 
@@ -150,6 +151,36 @@ def test_spoofed_x_forwarded_for_cannot_bypass_direct_rate_limit(monkeypatch):
 
     assert response.status_code == 429
     assert response.get_json()["error"] == "Rate limit exceeded"
+
+
+def test_default_rate_limit_429_retains_nonce_csp():
+    client_address = {"REMOTE_ADDR": "192.0.2.55"}
+
+    with app_module.app.test_client() as client:
+        for _ in range(50):
+            response = client.get(
+                "/",
+                environ_overrides=client_address,
+            )
+            assert response.status_code == 200
+
+        limited = client.get(
+            "/",
+            environ_overrides=client_address,
+        )
+
+    assert limited.status_code == 429
+    assert limited.get_json()["error"] == "Rate limit exceeded"
+
+    policy = limited.headers["Content-Security-Policy"]
+    nonce_match = re.search(
+        r"script-src 'self' 'nonce-([A-Za-z0-9_-]{22})'",
+        policy,
+    )
+
+    assert nonce_match is not None
+    nonce = nonce_match.group(1)
+    assert f"style-src-elem 'self' 'nonce-{nonce}'" in policy
 
 
 def test_explicit_proxy_clients_receive_independent_rate_limit_buckets(monkeypatch):

@@ -210,15 +210,25 @@ def sanitize_input(user_input: str) -> str:
     return sanitized.strip()
 
 
+def get_csp_nonce():
+    """Return this response's CSP nonce, creating it if needed."""
+    nonce = getattr(g, "csp_nonce", None)
+    if nonce is None:
+        nonce = secrets.token_urlsafe(16)
+        g.csp_nonce = nonce
+    return nonce
+
+
 @app.before_request
 def create_csp_nonce():
     """Create a fresh nonce for this response's permitted inline assets."""
-    g.csp_nonce = secrets.token_urlsafe(16)
+    get_csp_nonce()
 
 
 @app.after_request
 def apply_security_headers(response):
     """Attach standard production security headers to all responses."""
+    nonce = get_csp_nonce()
     if request.path.startswith('/api/'):
         response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Frame-Options'] = 'DENY'
@@ -231,11 +241,11 @@ def apply_security_headers(response):
         "form-action 'self'; "
         "frame-ancestors 'none'; "
         "object-src 'none'; "
-        f"script-src 'self' 'nonce-{g.csp_nonce}'; "
+        f"script-src 'self' 'nonce-{nonce}'; "
         "script-src-attr 'none'; "
         "style-src 'self' 'unsafe-inline'; "
         "style-src-attr 'unsafe-inline'; "
-        f"style-src-elem 'self' 'nonce-{g.csp_nonce}'; "
+        f"style-src-elem 'self' 'nonce-{nonce}'; "
         "worker-src 'self'"
     )
     return response
